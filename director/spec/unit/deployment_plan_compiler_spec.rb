@@ -5,121 +5,44 @@ require File.expand_path("../../spec_helper", __FILE__)
 describe Bosh::Director::DeploymentPlanCompiler do
 
   before(:each) do
+    @cloud = stub("CPI")
+    BD::Config.stub(:cloud).and_return(@cloud)
+  end
+
+  let(:plan) do
+    mock(BD::DeploymentPlan)
+  end
+
+  let(:compiler) do
+    BD::DeploymentPlanCompiler.new(plan)
+  end
+
+  it "should bind deployment" do
+    plan.should_receive(:bind_model)
+    compiler.bind_deployment
+  end
+
+  it "should bind releases" do
+    r1 = stub(BD::DeploymentPlan::Release)
+    r2 = stub(BD::DeploymentPlan::Release)
+
+    plan.should_receive(:releases).and_return([r1, r2])
+
+    r1.should_receive(:bind_model)
+    r2.should_receive(:bind_model)
+
+    compiler.bind_releases
+  end
+
+end
+
+describe Bosh::Director::DeploymentPlanCompiler do
+
+  before(:each) do
     @cloud = stub(:Cloud)
     BD::Config.stub(:cloud).and_return(@cloud)
     @deployment_plan = stub(:DeploymentPlan)
     @deployment_plan_compiler = BD::DeploymentPlanCompiler.new(@deployment_plan)
-  end
-
-  describe :bind_deployment do
-    it "should create the deployment if it doesn't exist" do
-      @deployment_plan.stub!(:name).and_return("deployment")
-      @deployment_plan.stub!(:canonical_name).and_return("deployment")
-
-      deployment = nil
-      @deployment_plan.should_receive(:deployment=).
-          and_return { |*args| deployment = args.first }
-
-      @deployment_plan_compiler.bind_deployment
-
-      BD::Models::Deployment.count.should == 1
-      BD::Models::Deployment.first.should == deployment
-      deployment.name.should == "deployment"
-    end
-
-    it "should reuse a deployment if it already exists" do
-      @deployment_plan.stub!(:name).and_return("deployment")
-      @deployment_plan.stub!(:canonical_name).and_return("deployment")
-
-      deployment = BD::Models::Deployment.make(:name => "deployment")
-      @deployment_plan.should_receive(:deployment=).with(deployment)
-
-      @deployment_plan_compiler.bind_deployment
-
-      BD::Models::Deployment.count.should == 1
-    end
-
-    it "should not allow you to create a deployment if it clashes with a canonical name" do
-      @deployment_plan.stub!(:name).and_return("dep-a")
-      @deployment_plan.stub!(:canonical_name).and_return("dep-a")
-
-      BD::Models::Deployment.make(:name => "dep_a")
-
-      lambda {
-        @deployment_plan_compiler.bind_deployment
-      }.should raise_error(BD::DeploymentCanonicalNameTaken,
-                           "Invalid deployment name `dep-a', " +
-                           "canonical name already taken")
-    end
-  end
-
-  describe :bind_releases do
-    before(:each) do
-      @release_spec = stub(:ReleaseSpec)
-      @release_spec.stub(:name).and_return("my_release")
-      @release_spec.stub(:version).and_return(10)
-      @deployment_plan.stub(:releases).and_return([@release_spec])
-    end
-
-    it "should bind releases" do
-      deployment = BD::Models::Deployment.make
-
-      foo_release = BD::Models::Release.make(:name => "foo")
-      foo_version = BD::Models::ReleaseVersion.make(
-        :release => foo_release, :version => 17)
-      foo_spec = { "name" => "foo", "version" => "17" }
-      foo = BD::DeploymentPlan::ReleaseSpec.new("plan", foo_spec)
-
-      bar_release = BD::Models::Release.make(:name => "bar")
-      bar_version = BD::Models::ReleaseVersion.make(
-        :release => bar_release, :version => 42)
-      bar_spec = { "name" => "bar", "version" => "42" }
-      bar = BD::DeploymentPlan::ReleaseSpec.new("plan", bar_spec)
-
-      @deployment_plan.stub(:deployment).and_return(deployment)
-      @deployment_plan.stub(:releases).and_return([foo, bar])
-
-      @deployment_plan_compiler.bind_releases
-
-      foo.release.should == foo_release
-      foo.release_version.should == foo_version
-
-      bar.release.should == bar_release
-      bar.release_version.should == bar_version
-
-      deployment.releases.to_a.should =~ [foo_release, bar_release]
-      deployment.release_versions.to_a.should =~ [foo_version, bar_version]
-    end
-
-    it "should fail if the release doesn't exist" do
-      lambda {
-        @deployment_plan_compiler.bind_releases
-      }.should raise_error(/can't find release/i)
-    end
-
-    it "should fail if the release version doesn't exist" do
-      lambda {
-        release = BD::Models::Release.make(:name => "my_release")
-        @release_spec.should_receive(:release=).with(release)
-        @deployment_plan_compiler.bind_releases
-      }.should raise_error(/can't find release version/i)
-    end
-
-    it "should lock the release" do
-      deployment = BD::Models::Deployment.make
-      release = BD::Models::Release.make(:name => "my_release")
-      old_version = BD::Models::ReleaseVersion.make(
-          :release => release, :version => 9)
-      new_version = BD::Models::ReleaseVersion.make(
-          :release => release, :version => 10)
-      deployment.add_release_version(old_version)
-      @release_spec.as_null_object
-      @deployment_plan.stub(:deployment).and_return(deployment)
-      @deployment_plan_compiler.bind_releases
-
-      deployment.releases.to_a.should == [release]
-      deployment.release_versions.to_a.should =~ [old_version, new_version]
-    end
   end
 
   describe :bind_existing_deployment do
@@ -129,7 +52,7 @@ describe Bosh::Director::DeploymentPlanCompiler do
       vm_2 = BD::Models::Vm.make
       deployment.add_vm(vm_1)
       deployment.add_vm(vm_2)
-      @deployment_plan.stub(:deployment).and_return(deployment)
+      @deployment_plan.stub(:model).and_return(deployment)
 
       thread_pool = stub(:ThreadPool)
       thread_pool.stub(:wrap).and_yield(thread_pool)
@@ -434,7 +357,8 @@ describe Bosh::Director::DeploymentPlanCompiler do
     before(:each) do
       @deployment = BD::Models::Deployment.make(:name => "foo")
       @vm = BD::Models::Vm.make(:deployment => @deployment , :cid => "foo")
-      @deployment_plan.stub(:deployment).and_return(@deployment)
+      @deployment_plan.stub(:name).and_return("foo")
+      @deployment_plan.stub(:model).and_return(@deployment)
     end
 
     it "should do nothing when VM is ok" do
@@ -523,7 +447,7 @@ describe Bosh::Director::DeploymentPlanCompiler do
       @job_spec = stub(:JobSpec)
       @instance_spec = stub(:InstanceSpec)
 
-      @deployment_plan.stub(:deployment).and_return(@deployment)
+      @deployment_plan.stub(:model).and_return(@deployment)
       @deployment_plan.stub(:jobs).and_return([@job_spec])
 
       @job_spec.stub(:instances).and_return([@instance_spec])
@@ -730,14 +654,14 @@ describe Bosh::Director::DeploymentPlanCompiler do
 
       @job_spec = stub(:JobSpec)
       @template_spec = stub(:TemplateSpec)
-      @release_spec = stub(:ReleaseSpec)
+      @release_spec = stub(BD::DeploymentPlan::Release)
 
       @template_spec.stub(:name).and_return("test_template")
 
       @deployment_plan.stub(:releases).and_return([@release_spec])
 
       @release_spec.stub(:templates).and_return([@template_spec])
-      @release_spec.stub(:release_version).and_return(@release_version)
+      @release_spec.stub(:model).and_return(@release_version)
     end
 
     it "should bind the compiled packages to the job" do

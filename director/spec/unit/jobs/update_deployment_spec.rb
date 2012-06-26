@@ -9,6 +9,7 @@ describe Bosh::Director::Jobs::UpdateDeployment do
     @deployment_plan = mock("deployment_plan")
 
     @deployment_plan.stub!(:name).and_return("test_deployment")
+    @deployment_plan.should_receive(:parse).once
 
     pool1 = mock("resource_pool")
     pool2 = mock("resource_pool")
@@ -137,7 +138,7 @@ describe Bosh::Director::Jobs::UpdateDeployment do
 
       deployment.add_stemcell(old_stemcell)
 
-      @deployment_plan.stub!(:deployment).and_return(deployment)
+      @deployment_plan.stub!(:model).and_return(deployment)
       @deployment_plan.stub!(:resource_pools).and_return([resource_pool_spec])
 
       Bosh::Director::ResourcePoolUpdater.stub!(:new).with(resource_pool_spec).and_return(mock("updater"))
@@ -174,18 +175,16 @@ describe Bosh::Director::Jobs::UpdateDeployment do
 
       foo_release_spec = mock("release_spec",
                               :name => "foo",
-                              :release => foo_release,
-                              :release_version => foo_release_version)
+                              :model => foo_release_version)
 
       bar_release_spec = mock("release_spec",
                               :name => "bar",
-                              :release => bar_release,
-                              :release_version => bar_release_version)
+                              :model => bar_release_version)
 
       release_specs = [foo_release_spec, bar_release_spec]
 
       @deployment_plan.stub!(:releases).and_return(release_specs)
-      @deployment_plan.stub!(:deployment).and_return(deployment)
+      @deployment_plan.stub!(:model).and_return(deployment)
 
       Bosh::Director::Lock.stub!(:new).
         with("lock:deployment:test_deployment").and_return(deployment_lock)
