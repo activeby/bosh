@@ -180,10 +180,10 @@ module Bosh::Director
     end
 
     def create_vm(new_disk_id)
-      stemcell = @resource_pool_spec.stemcell.stemcell
+      stemcell = @resource_pool_spec.stemcell
       disks = [@instance.persistent_disk_cid, new_disk_id].compact
 
-      @vm = VmCreator.new.create(@deployment_plan.model, stemcell,
+      @vm = VmCreator.new.create(@deployment_plan.model, stemcell.model,
                                  @resource_pool_spec.cloud_properties,
                                  @instance_spec.network_settings, disks,
                                  @resource_pool_spec.env)
@@ -287,7 +287,7 @@ module Bosh::Director
         "resource_pool" => @job_spec.resource_pool.spec,
         "job" => @job_spec.spec,
         "index" => @instance_spec.index,
-        "release" => @deployment_plan.release.spec
+        "release" => @job_spec.release.spec
       }
 
       if @instance_spec.disk_size > 0
