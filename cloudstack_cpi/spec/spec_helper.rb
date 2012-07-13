@@ -5,9 +5,12 @@ require "bundler"
 Bundler.setup(:default, :test)
 
 require "rspec"
+require 'ruby-debug'
 
 require 'cloud'
 require 'cloud/cloudstack'
+
+require 'hooks'
 
 class CloudStackSpecConfig
   attr_accessor :logger, :uuid
@@ -18,3 +21,4 @@ config.logger = Logger.new(STDOUT)
 config.logger.level = Logger::ERROR
 
 Bosh::Clouds::Config.configure(config)
+
