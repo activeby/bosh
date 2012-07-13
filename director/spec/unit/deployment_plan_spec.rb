@@ -130,7 +130,7 @@ describe Bosh::Director::DeploymentPlan do
       network_spec
 
       received_plan = nil
-      BD::DeploymentPlan::ManualNetworkSpec.should_receive(:new).
+      BD::DeploymentPlan::ManualNetwork.should_receive(:new).
           and_return do |deployment_plan, spec|
         received_plan = deployment_plan
         spec.should == {"foo" => "bar"}
@@ -142,7 +142,7 @@ describe Bosh::Director::DeploymentPlan do
     end
 
     it "should enforce canonical name uniqueness" do
-      BD::DeploymentPlan::ManualNetworkSpec.stub(:new).
+      BD::DeploymentPlan::ManualNetwork.stub(:new).
           and_return do |deployment_plan, spec|
         network_spec = mock(:network_spec)
         network_spec.stub(:name).and_return(spec["name"])
@@ -259,14 +259,14 @@ describe Bosh::Director::DeploymentPlan do
   end
 
   describe :parse_jobs do
-    it "should delegate to JobSpec" do
-      job_spec = mock(:job_spec)
+    it "should delegate to Job" do
+      job_spec = mock(BD::DeploymentPlan::Job)
       job_spec.stub(:name).and_return("Foo")
       job_spec.stub(:canonical_name).and_return("foo")
       job_spec
 
       received_plan = nil
-      BD::DeploymentPlan::JobSpec.should_receive(:new).
+      BD::DeploymentPlan::Job.should_receive(:new).
           and_return do |deployment_plan, spec|
         received_plan = deployment_plan
         spec.should == {"foo" => "bar"}
@@ -278,7 +278,7 @@ describe Bosh::Director::DeploymentPlan do
     end
 
     it "should enforce canonical name uniqueness" do
-      BD::DeploymentPlan::JobSpec.stub(:new).
+      BD::DeploymentPlan::Job.stub(:new).
           and_return do |_, spec|
         job_spec = mock(:job_spec)
         job_spec.stub(:name).and_return(spec["name"])

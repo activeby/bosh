@@ -11,7 +11,7 @@ require "director/deployment_plan/instance"
 require "director/deployment_plan/job"
 require "director/deployment_plan/network"
 require "director/deployment_plan/network_subnet"
-require "director/deployment_plan/package"
+require "director/deployment_plan/compiled_package"
 require "director/deployment_plan/release"
 require "director/deployment_plan/resource_pool"
 require "director/deployment_plan/stemcell"
@@ -115,20 +115,20 @@ module Bosh::Director
 
     # Returns a named job
     # @param [String] name Job name
-    # @return [Bosh::Director::DeploymentPlan::JobSpec] Job
+    # @return [Bosh::Director::DeploymentPlan::Job] Job
     def job(name)
       @jobs_name_index[name]
     end
 
     # Returns all networks in a deployment plan
-    # @return [Array<Bosh::Director::DeploymentPlan::NetworkSpec>]
+    # @return [Array<Bosh::Director::DeploymentPlan::Network>]
     def networks
       @networks.values
     end
 
     # Returns a named network
     # @param [String] name
-    # @return [Bosh::Director::DeploymentPlan::NetworkSpec]
+    # @return [Bosh::Director::DeploymentPlan::Network]
     def network(name)
       @networks[name]
     end
@@ -256,7 +256,7 @@ module Bosh::Director
                 "deployment manifest"
         end
 
-        job = JobSpec.new(self, job)
+        job = Job.new(self, job)
         if @jobs_canonical_name_index.include?(job.canonical_name)
           raise DeploymentCanonicalJobNameTaken,
                 "Invalid job name `#{job.name}', canonical name already taken"
@@ -277,11 +277,11 @@ module Bosh::Director
                              :default => "manual")
         case type
           when "manual"
-            network = ManualNetworkSpec.new(self, network_spec)
+            network = ManualNetwork.new(self, network_spec)
           when "dynamic"
-            network = DynamicNetworkSpec.new(self, network_spec)
+            network = DynamicNetwork.new(self, network_spec)
           when "vip"
-            network = VipNetworkSpec.new(self, network_spec)
+            network = VipNetwork.new(self, network_spec)
           else
             raise DeploymentInvalidNetworkType,
                   "Invalid network type `#{type}'"

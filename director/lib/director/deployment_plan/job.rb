@@ -2,7 +2,7 @@
 
 module Bosh::Director
   class DeploymentPlan
-    class JobSpec
+    class Job
       include IpUtil
       include DnsHelper
       include ValidationHelper
@@ -14,20 +14,53 @@ module Bosh::Director
       # appropriate instance spec modifiers)
       VALID_JOB_STATES = %w(started stopped detached recreate restart)
 
-      attr_accessor :deployment
-      attr_accessor :release
+      # @return [String] Job name
       attr_accessor :name
+
+      # @return [String] Job canonical name (mostly for DNS)
       attr_accessor :canonical_name
+
+      # @return [Integer] Persistent disk size (no disk if zero)
       attr_accessor :persistent_disk # TODO: rename to 'disk_size' (?)
+
+      # @return [DeploymentPlan] Current deployment plan
+      attr_accessor :deployment
+
+      # @return [DeploymentPlan::Release] Release this job belongs to
+      attr_accessor :release
+
+      # @return [DeploymentPlan::ResourcePool] Resource pool this job should
+      #   be run in
       attr_accessor :resource_pool
+
+      # @return [DeploymentPlan::Network Job default network
       attr_accessor :default_network
+
+      # @return [Array<DeploymentPlan::Template] Templates included into the job
       attr_accessor :templates
+
+      # @return [Hash] Job properties
       attr_accessor :properties
+
+      # @return [Hash<String, DeploymentPlan::Package] Packages included into
+      #   this job
       attr_accessor :packages
-      attr_accessor :update
+
+      # @return [DeploymentPlan::UpdateConfig] Job update settings
+      attr_accessor :update # TODO rename to update_config or update_settings
+
+      # @return [Array<Models::Instance>] List of excess instance models that
+      #   are not needed for current deployment
       attr_accessor :unneeded_instances
-      attr_accessor :state
+
+      # @return [String] Expected job state
+      attr_accessor :state # TODO rename to avoid confusion
+
+      # @return [Hash<Integer, String>] Individual instance expected states
       attr_accessor :instance_states
+
+      # @return [Exception] Exception that requires job update process to be
+      #   interrupted
       attr_accessor :halt_exception
 
       # @param [Bosh::Director::DeploymentPlan] deployment Deployment plan
@@ -35,6 +68,8 @@ module Bosh::Director
       def initialize(deployment, job_spec)
         @deployment = deployment
         @job_spec = job_spec
+
+        @templates = []
 
         parse_name
         parse_release
@@ -52,6 +87,8 @@ module Bosh::Director
         @unneeded_instances = []
       end
 
+      # Returns job spec as a Hash. To be used by all instances of the job to
+      # populate agent state.
       # @return [Hash] Hash representation
       def spec
         # TODO(lisbakke): Remove Legacy code when the agent has been updated
@@ -62,18 +99,17 @@ module Bosh::Director
           "release" => @release.name,
           "templates" => [],
           # --- Legacy ---
-          "template" => first_template.template.name,
-          "version" => first_template.template.version,
-          "sha1" => first_template.template.sha1,
-          "blobstore_id" => first_template.template.blobstore_id
+          "template" => first_template.name,
+          "version" => first_template.version,
+          "sha1" => first_template.sha1,
+          "blobstore_id" => first_template.blobstore_id
         }
-        if first_template.template.logs
-          result["logs"] = template.logs
+        if first_template.logs
+          result["logs"] = first_template.logs
         end
         # --- /Legacy ---
 
         @templates.each do |template|
-          template = template.template
           template_entry = {
             "name" => template.name,
             "version" => template.version,
@@ -83,30 +119,49 @@ module Bosh::Director
           if template.logs
             template_entry["logs"] = template.logs
           end
-          result["templates"].push(template_entry)
+          result["templates"] << template_entry
         end
 
         result
       end
 
-      def instances
-        @instances
-      end
-
-      def instance(index)
-        @instances[index]
-      end
-
-      def add_package(package, compiled_package)
-        @packages[package.name] = PackageSpec.new(package, compiled_package)
-      end
-
+      # Returns package specs for all packages in the job indexed by package
+      # name. To be used by all instances of the job to populate agent state.
+      # @return [Hash<String, Hash>] All package specs indexed by package name
       def package_spec
         result = {}
         @packages.each do |name, package|
           result[name] = package.spec
         end
         result
+      end
+
+      # Returns all instances of this job
+      # @return [Array<DeploymentPlan::Instance>] All job instances
+      def instances
+        @instances
+      end
+
+      # Returns job instance by index
+      # @param [Integer] index
+      # @return [DeploymentPlan::Instance] index-th instance
+      def instance(index)
+        @instances[index]
+      end
+
+      # Returns the state state of job instance by its index
+      # @param [Integer] index Instance index
+      # @return [String, nil] Instance state (nil if not specified)
+      def instance_state(index)
+        @instance_states[index] || @state
+      end
+
+      # Registers compiled package with this job.
+      # @param [Models::CompiledPackage] compiled_package_model Compiled package
+      # @return [void]
+      def use_compiled_package(compiled_package_model)
+        compiled_package = CompiledPackage.new(compiled_package_model)
+        @packages[compiled_package.name] = compiled_package
       end
 
       def should_halt?
@@ -135,7 +190,7 @@ module Bosh::Director
           if @deployment.releases.size == 1
             @release = @deployment.releases.first
           else
-            raise JobSpecMissingRelease,
+            raise JobMissingRelease,
                   "Cannot tell what release job `#{@name}' " +
                   "supposed to use, please reference an existing release"
           end
@@ -144,14 +199,28 @@ module Bosh::Director
         end
 
         if @release.nil?
-          raise JobSpecUnknownRelease,
+          raise JobUnknownRelease,
                 "Job `#{@name}' references " +
                 "an unknown release `#{release_name}'"
         end
       end
 
       def parse_template
-        @templates = @release.template(safe_property(@job_spec, "template"))
+        # TODO support plural "templates" syntax as well
+        template_names = safe_property(@job_spec, "template")
+
+        if template_names.is_a?(String)
+          template_names = Array(template_names)
+        end
+
+        unless template_names.is_a?(Array)
+          invalid_type("template", "String or Array")
+        end
+
+        template_names.each do |template_name|
+          @release.use_template_named(template_name)
+          @templates << @release.template(template_name)
+        end
       end
 
       def parse_disk
@@ -175,7 +244,7 @@ module Bosh::Director
                                            :class => String)
         @resource_pool = deployment.resource_pool(resource_pool_name)
         if @resource_pool.nil?
-          raise JobSpecUnknownResourcePool,
+          raise JobUnknownResourcePool,
                 "Job `#{@name}' references " +
                 "an unknown resource pool `#{resource_pool_name}'"
         end
@@ -203,15 +272,15 @@ module Bosh::Director
           begin
             index = Integer(index)
           rescue ArgumentError
-            raise JobSpecInvalidJobIndex,
+            raise JobInvalidInstanceIndex,
                   "Invalid job index `#{index}', integer expected"
           end
           unless (0...job_size).include?(index)
-            raise JobSpecInvalidInstanceIndex,
+            raise JobInvalidInstanceIndex,
                   "`#{@name}/#{index}' is outside of (0..#{job_size-1}) range"
           end
           unless VALID_JOB_STATES.include?(state)
-            raise JobSpecInvalidInstanceState,
+            raise JobInvalidInstanceState,
                   "Invalid state `#{state}' for `#{@name}/#{index}', " +
                   "valid states are: #{VALID_JOB_STATES.join(", ")}"
           end
@@ -219,13 +288,13 @@ module Bosh::Director
         end
 
         if @state && !VALID_JOB_STATES.include?(@state)
-          raise JobSpecInvalidJobState,
+          raise JobInvalidJobState,
                 "Invalid state `#{@state}' for `#{@name}', " +
                 "valid states are: #{VALID_JOB_STATES.join(", ")}"
         end
 
         job_size.times do |index|
-          @instances[index] = InstanceSpec.new(self, index)
+          @instances[index] = Instance.new(self, index)
           @resource_pool.reserve_capacity(1)
         end
       end
@@ -236,7 +305,7 @@ module Bosh::Director
 
         network_specs = safe_property(@job_spec, "networks", :class => Array)
         if network_specs.empty?
-          raise JobSpecMissingNetwork,
+          raise JobMissingNetwork,
                 "Job `#{@name}' must specify at least one network"
         end
 
@@ -244,7 +313,7 @@ module Bosh::Director
           network_name = safe_property(network_spec, "name", :class => String)
           network = @deployment.network(network_name)
           if network.nil?
-            raise JobNetworkSpecUnknownNetwork,
+            raise JobUnknownNetwork,
                   "Job `#{@name}' references " +
                   "an unknown network `#{network_name}'"
           end
@@ -256,7 +325,7 @@ module Bosh::Director
               static_ips << ip
             end
             if static_ips.size != @instances.size
-              raise JobNetworkSpecInstanceIpMismatch,
+              raise JobNetworkInstanceIpMismatch,
                     "Job `#{@name}' has #{@instances.size} " +
                     "instances but was allocated #{static_ips.size} static IPs"
             end
@@ -266,16 +335,16 @@ module Bosh::Director
                                           :class => Array, :optional => true)
           if default_network
             default_network.each do |property|
-              unless NetworkSpec::VALID_DEFAULTS.include?(property)
-                raise JobNetworkSpecInvalidDefault,
+              unless Network::VALID_DEFAULTS.include?(property)
+                raise JobNetworkInvalidDefault,
                       "Job `#{@name}' specified " +
                       "an invalid default network property `#{property}', " +
                       "valid properties are: " +
-                      NetworkSpec::VALID_DEFAULTS.join(", ")
+                      Network::VALID_DEFAULTS.join(", ")
               end
 
               if @default_network[property]
-                raise JobNetworkSpecMultipleDefaults,
+                raise JobNetworkMultipleDefaults,
                       "Job `#{@name}' specified more than one " +
                       "network to contain default #{property}"
               else
@@ -297,12 +366,12 @@ module Bosh::Director
         end
 
         if network_specs.size > 1
-          missing_default_properties = NetworkSpec::VALID_DEFAULTS.dup
+          missing_default_properties = Network::VALID_DEFAULTS.dup
           @default_network.each_key do |key|
             missing_default_properties.delete(key)
           end
           unless missing_default_properties.empty?
-            raise JobNetworkSpecMissingDefault,
+            raise JobNetworkMissingDefault,
                   "Job `#{@name}' must specify which network is default for " +
                   missing_default_properties.sort.join(", ") +
                   ", since it has more than one network configured"
@@ -311,7 +380,7 @@ module Bosh::Director
           # Set the default network to the one and only available network
           # (if not specified already)
           network = safe_property(network_specs[0], "name", :class => String)
-          NetworkSpec::VALID_DEFAULTS.each do |property|
+          Network::VALID_DEFAULTS.each do |property|
             @default_network[property] ||= network
           end
         end
