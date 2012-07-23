@@ -30,9 +30,6 @@ describe VirtualMachine do
         'templateid' => '8a31cf9c-f248-0588-256e-9dbf58785216',
         'serviceofferingid' => '4437ac6c-9fe3-477a-57ec-60a5a45896a4'
         }}
-      let(:deploy_response){{
-
-        }}
       it 'send request to fog' do
         subject.should_receive(:request).with(:deploy_virtual_machine, deploy_parameters).and_return empty_fog_response
         subject.deploy deploy_parameters
