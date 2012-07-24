@@ -1,7 +1,7 @@
 RSpec.configure do |config|
   config.before(:each) do
     Fog.mock!
-    Bosh::CloudStackCloud::Api.authorize({cloudstack_api_key: 'test'})
+    Bosh::CloudStackCloud::Api.authorize({cloudstack_api_key: 'test', cloudstack_host: 'localhost'})
  end
   config.after(:each) do
     Bosh::CloudStackCloud::Api.break_connection
