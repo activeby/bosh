@@ -12,9 +12,9 @@ require "uuidtools"
 require "common/thread_pool"
 require "common/thread_formatter"
 
+
+require "cloud/cloudstack/stemcell_operations"
 require "cloud/cloudstack/cloud"
-require 'cloud/cloudstack/errors'
-require "cloud/cloudstack/api"
 module Bosh
   module Clouds
     CloudStack = Bosh::CloudStackCloud::Cloud
