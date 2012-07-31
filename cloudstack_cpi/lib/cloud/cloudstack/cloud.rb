@@ -3,10 +3,30 @@ module Bosh
     class Cloud < Bosh::Cloud
       ##
       # Cloud initialization
+      # Initialize BOSH OpenStack CPI
       #
       # @param [Hash] options cloud options
-      def initialize(options)
+      #
+      def initialize()
+        not_implemented(:initialize)
       end
+
+=begin
+      def initialize(options)
+        @options = options.dup
+
+        @cloudstack_properties = @options["cloudstack"];
+
+        cloudstack_params = {
+          :provider => "CloudStack",
+          :cloudstack_api_key => @cloudstack_properties["api_key"],
+          :cloudstack_secret_access_key => @cloudstack_properties["secret_access_key"],
+          :cloudstack_host => @cloudstack_properties["host"],
+        }
+
+        @cloudstack = Fog::Compute.new(cloudstack_params)
+      end
+=end
 
       include StemcellOperations
 
@@ -141,3 +161,6 @@ module Bosh
     end
   end
 end
+
+# vim: autoindent tabstop=2 shiftwidth=2 expandtab softtabstop=2
+
