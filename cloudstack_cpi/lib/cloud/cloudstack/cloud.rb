@@ -9,21 +9,18 @@ module Bosh
       #
       # @param [Hash] options cloud options
       #
-      def initialize()
-        not_implemented(:initialize)
-      end
-
       def initialize(options)
         @options = options.dup
-
         validate_options!
+
+        @logger = Bosh::Clouds::Config.logger
 
         compute_init_options = @options['cloudstack'].select { |key, _|
           %w(cloudstack_api_key cloudstack_secret_access_key cloudstack_host).include? key
         }
         compute_init_options[:provider] = "CloudStack"
 
-        @compute = Fog::Compute.new compute_init_options
+        @cloudstack = Fog::Compute.new compute_init_options
 
 
 #options[:cloudstack_session_id] = '?'
