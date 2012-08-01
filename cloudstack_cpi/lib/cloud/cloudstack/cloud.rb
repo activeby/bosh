@@ -5,8 +5,14 @@ module Bosh
     class Cloud < Bosh::Cloud
       ##
       # Cloud initialization
+      # Initialize BOSH OpenStack CPI
       #
       # @param [Hash] options cloud options
+      #
+      def initialize()
+        not_implemented(:initialize)
+      end
+
       def initialize(options)
         @options = options.dup
 
@@ -185,3 +191,6 @@ module Bosh
     end
   end
 end
+
+# vim: autoindent tabstop=2 shiftwidth=2 expandtab softtabstop=2
+
