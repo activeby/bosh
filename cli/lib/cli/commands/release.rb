@@ -264,10 +264,20 @@ module Bosh::Cli::Command
       end
 
       header("Building packages")
-      Dir[File.join(work_dir, "packages", "*", "spec")].each do |package_spec|
+      Dir[File.join(work_dir, "packages", "*")].each do |package_dir|
+        next unless File.directory?(package_dir)
+        package_dirname = File.basename(package_dir)
+        package_spec = load_yaml_file(File.join(package_dir, "spec"))
+
+        if package_spec["name"] != package_dirname
+          err("Found `#{package_spec["name"]}' package in " +
+              "`#{package_dirname}' directory, please fix it")
+        end
+
         package = Bosh::Cli::PackageBuilder.new(package_spec, work_dir,
                                                 final, release.blobstore)
-        package.dry_run = dry_run
+        package.dry_run = true if dry_run
+
         say("Building #{package.name.green}...")
         package.build
         packages << package
@@ -293,12 +303,18 @@ module Bosh::Cli::Command
       header("Building jobs")
       Dir[File.join(work_dir, "jobs", "*")].each do |job_dir|
         next unless File.directory?(job_dir)
-        prepare_script = File.join(job_dir, "prepare")
-        job_spec = File.join(job_dir, "spec")
+        job_dirname = File.basename(job_dir)
 
+        prepare_script = File.join(job_dir, "prepare")
         if File.exists?(prepare_script)
           say("Found prepare script in `#{File.basename(job_dir)}'")
           Bosh::Cli::JobBuilder.run_prepare_script(prepare_script)
+        end
+
+        job_spec = load_yaml_file(File.join(job_dir, "spec"))
+        if job_spec["name"] != job_dirname
+          err("Found `#{job_spec["name"]}' job in " +
+              "`#{job_dirname}' directory, please fix it")
         end
 
         job = Bosh::Cli::JobBuilder.new(job_spec, work_dir, final,

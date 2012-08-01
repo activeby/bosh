@@ -3,11 +3,10 @@
 module Bosh::Cli
   module Command
     class Base
-      BLOBS_DIR = "blobs"
-      BLOBS_INDEX_FILE = "blob_index.yml"
-
       attr_reader :cache, :config, :options, :work_dir
       attr_accessor :out, :usage
+
+      DEFAULT_DIRECTOR_PORT = 25555
 
       def initialize(options = {})
         @options = options.dup
@@ -16,6 +15,8 @@ module Bosh::Cli
         @config = Config.new(config_file)
         @cache = Config.cache
         @exit_code = 0
+        @out = nil
+        @usage = nil
       end
 
       class << self
@@ -81,16 +82,30 @@ module Bosh::Cli
 
       def confirmed?(question = "Are you sure?")
         non_interactive? ||
-            ask("#{question} (type 'yes' to continue): ") == "yes"
+          ask("#{question} (type 'yes' to continue): ") == "yes"
       end
 
-      [:username, :password, :target, :deployment].each do |attr_name|
-        define_method attr_name do
-          config.send(attr_name)
-        end
+      # @return [String] Target director URL
+      def target
+        url = options[:target] || config.target
+        config.resolve_alias(:target, url) || url
       end
-
       alias_method :target_url, :target
+
+      # @return [String] Deployment manifest path
+      def deployment
+        options[:deployment] || config.deployment
+      end
+
+      # @return [String] Director username
+      def username
+        options[:username] || ENV["BOSH_USER"] || config.username(target)
+      end
+
+      # @return [String] Director password
+      def password
+        options[:password] || ENV["BOSH_PASSWORD"] || config.password(target)
+      end
 
       def target_name
         config.target_name || target_url
@@ -175,8 +190,8 @@ module Bosh::Cli
 
       def in_release_dir?
         File.directory?("packages") &&
-            File.directory?("jobs") &&
-            File.directory?("src")
+          File.directory?("jobs") &&
+          File.directory?("src")
       end
 
       def dirty_state?
@@ -186,8 +201,11 @@ module Bosh::Cli
       end
 
       def normalize_url(url)
+        had_port = url.to_s =~ /:\d+$/
         url = "http://#{url}" unless url.match(/^https?/)
-        URI.parse(url).to_s
+        uri = URI.parse(url)
+        uri.port = DEFAULT_DIRECTOR_PORT unless had_port
+        uri.to_s.strip.gsub(/\/$/, "")
       end
 
     end

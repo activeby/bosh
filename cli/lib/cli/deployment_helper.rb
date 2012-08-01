@@ -2,6 +2,7 @@
 
 module Bosh::Cli
   module DeploymentHelper
+    include VersionCalc
 
     def prepare_deployment_manifest(options = {})
       # TODO: extract to helper class
@@ -32,7 +33,7 @@ module Bosh::Cli
           properties = director.list_properties(manifest["name"])
         rescue Bosh::Cli::DirectorError
           say("Unable to get properties list from director, " +
-                  "trying without it...")
+              "trying without it...")
         end
 
         say("Compiling deployment manifest...")
@@ -41,33 +42,38 @@ module Bosh::Cli
           hash
         end
 
-        manifest_yaml = compiler.result
-        manifest = YAML.load(manifest_yaml)
+        manifest = YAML.load(compiler.result)
       end
 
       if manifest["name"].blank? || manifest["director_uuid"].blank?
         err("Invalid manifest `#{File.basename(deployment)}': " +
-              "name and director UUID are required")
+            "name and director UUID are required")
+      end
+
+      if director.uuid != manifest["director_uuid"]
+        err("Target director UUID doesn't match UUID from deployment manifest")
       end
 
       if manifest["release"].blank? && manifest["releases"].blank?
         err("Deployment manifest doesn't have release information: '" +
-              "please add 'release' or 'releases' section")
+            "please add 'release' or 'releases' section")
       end
 
-      options[:yaml] ? manifest_yaml : manifest
+      resolve_release_aliases(manifest)
+
+      options[:yaml] ? YAML.dump(manifest) : manifest
     end
 
     # Check if the 2 deployments are different.
     # Print out a summary if "show" is true.
-    def deployment_changed?(current_manifest, manifest, show=true)
+    def deployment_changed?(current_manifest, manifest, show = true)
       diff = Bosh::Cli::HashChangeset.new
       diff.add_hash(normalize_deployment_manifest(manifest), :new)
       diff.add_hash(normalize_deployment_manifest(current_manifest), :old)
       changed = diff.changed?
 
       if changed && show
-        @_diff_key_visited = { }
+        @_diff_key_visited = {}
         diff.keys.each do |key|
           unless @_diff_key_visited[key]
             print_summary(diff, key)
@@ -295,6 +301,52 @@ module Bosh::Cli
           release_diff[:version].old, release_diff[:version].new])
         unless confirmed?("Are you sure you want to deploy this version?")
           cancel_deployment
+        end
+      end
+    end
+
+    # @param [Hash] manifest Deployment manifest (will be modified)
+    # @return [void]
+    def resolve_release_aliases(manifest)
+      if manifest["release"]
+        if manifest["releases"]
+          err("Manifest has both `release' and `releases', please fix it")
+        end
+        releases = [manifest["release"]]
+      else
+        releases = manifest["releases"]
+      end
+
+      unless releases.is_a?(Array)
+        err("Invalid release spec in the deployment manifest")
+      end
+
+      releases.each do |release|
+        if release["version"] == "latest"
+          latest_version = latest_releases[release["name"]]
+          if latest_version.nil?
+            err("Latest version for release `#{release["name"]}' is unknown")
+          end
+          # Avoiding Fixnum -> String noise in diff
+          if latest_version.to_s == latest_version.to_i.to_s
+            latest_version = latest_version.to_i
+          end
+          release["version"] = latest_version
+        end
+      end
+    end
+
+    def latest_releases
+      @_latest_releases ||= begin
+        director.list_releases.inject({}) do |hash, release|
+          unless release["name"].is_a?(String) &&
+            release["versions"].is_a?(Array)
+            err("Invalid director release list format")
+          end
+          hash[release["name"]] = release["versions"].sort { |v1, v2|
+            version_cmp(v2, v1)
+          }.first
+          hash
         end
       end
     end
