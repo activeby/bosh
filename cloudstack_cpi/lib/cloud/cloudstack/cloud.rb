@@ -67,6 +67,13 @@ module Bosh
         cloudstack_config['cloudstack_secret_access_key'] &&
         cloudstack_config['cloudstack_host']
       end
+
+      def cloud_error(message)
+        if @logger
+          @logger.error(message)
+        end
+        raise Bosh::Clouds::CloudError, message
+      end
     end
   end
 end
