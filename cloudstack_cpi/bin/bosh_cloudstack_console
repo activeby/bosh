@@ -61,8 +61,7 @@ end
 
 @config = get_config(config_file)
 
-puts "=> CloudStack service endpoint is #{@service_endpoint}"
-puts "=> Performing test operations with cloudstack_cpi code"
+puts "=> CloudStack service endpoint is #{@config['cloudstack']['cloudstack_host']}"
 
 # add logger
 $:.unshift(File.expand_path("../../lib", __FILE__))
@@ -90,4 +89,6 @@ if irb
 end
 
 #### Test manually ####
+puts "=> Performing test operations with cloudstack_cpi code"
+
 cld.create_stemcell "image", {}
