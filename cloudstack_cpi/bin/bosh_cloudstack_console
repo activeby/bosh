@@ -78,6 +78,10 @@ module ConsoleHelper
   def cld
     @cld ||= Bosh::CloudStackCloud::Cloud.new(@config)
   end
+
+  def compute
+    cld.cloudstack
+  end
 end
 include ConsoleHelper
 
@@ -91,4 +95,5 @@ end
 #### Test manually ####
 puts "=> Performing test operations with cloudstack_cpi code"
 
-cld.create_stemcell "image", {}
+cld.create_disk 100
+#cld.create_stemcell "image", {}
