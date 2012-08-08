@@ -5,22 +5,37 @@
 # Usage example:
 #      $ cd /bosh-installation-dir/bosh/cloudstack_cpi/bin
 #      $ ruby bosh_cloudstack_console -c /path-to-file/cloudstack_cpi_secure_config.yml
+#      or just
+#      $ ruby bosh_cloudstack_console
 
-# Put your access credentials securely in separate file.
-# contents of the file cloudstack_cpi_secure_config.yml:
+# Put your access credentials securely in a separate file.
+# Contents of the file cloudstack.yaml:
 # ---
 # access_key_id: key
 # secret_access_key: key
 # service_endpoint: domain
 
+# If you want to run this script in the interactive mode run it with -i switch
+#      $ ./bosh_cloudstack_console -i
 
+
+# run in the bundler context
+gemfile = File.expand_path("../../Gemfile", __FILE__)
+if File.exists?(gemfile)
+  ENV["BUNDLE_GEMFILE"] = gemfile
+  require "rubygems"
+  require "bundler/setup"
+end
+
+# parse config with cloudstack access credentials
 require 'yaml'
 require "optparse"
 
-config_file = nil
-
+config_file = File.expand_path("../cloudstack.yaml", __FILE__)
+irb = false
 opts_parser = OptionParser.new do |opts|
-  opts.on("-c", "--config FILE") { |file| config_file = file }
+  opts.on("-c", "--config FILE", "Security configuration file") { |file| config_file = file }
+  opts.on("-i", "--irb", "Interactive mode") { |i| irb = i }
 end
 
 opts_parser.parse!
@@ -32,32 +47,48 @@ end
 
 puts "=> Loading secure configuration from #{config_file}"
 
-def get_config_options(config)
-  @access_key_id = config["access_key_id"]
-  @secret_access_key = config["secret_access_key"]
-  @service_endpoint = config["service_endpoint"]
+def get_config(config_file)
+  config = YAML.load(File.read(config_file))
+
+  {
+      'cloudstack' => {
+          'cloudstack_api_key' => config["access_key_id"],
+          'cloudstack_secret_access_key' => config["secret_access_key"],
+          'cloudstack_host' => config["service_endpoint"]
+      }
+  }
 end
 
-get_config_options(YAML.load(File.read(config_file)))
+@config = get_config(config_file)
 
-puts "=> CloudStack service endpoint is #{@service_endpoint}"
+puts "=> CloudStack service endpoint is #{@config['cloudstack']['cloudstack_host']}"
 
-puts "=> Performing test operations with cloudstack_cpi code"
-
-#### TESTS ####
-
-require "../../cli/lib/cli"
-
+# add logger
 $:.unshift(File.expand_path("../../lib", __FILE__))
-
 require "../lib/bosh_cloudstack_cpi"
 
-cld = Bosh::CloudStackCloud::Cloud.new({
-                                           'cloudstack' => {
-                                               'cloudstack_api_key' => "#{@access_key_id}",
-                                               'cloudstack_secret_access_key' => "#{@secret_access_key}",
-                                               'cloudstack_host' => "#{@service_endpoint}"
-                                           }
-                                       })
+require 'ostruct'
+require 'logger'
+
+cloud_config = OpenStruct.new(:logger => Logger.new(STDOUT))
+Bosh::Clouds::Config.configure(cloud_config)
+
+# irb mode
+module ConsoleHelper
+  def cld
+    @cld ||= Bosh::CloudStackCloud::Cloud.new(@config)
+  end
+end
+include ConsoleHelper
+
+if irb
+  require "irb"
+  #require "irb/completion"
+
+  IRB.start
+end
+
+#### Test manually ####
+puts "=> Performing test operations with cloudstack_cpi code"
 
 cld.create_stemcell "image", {}
