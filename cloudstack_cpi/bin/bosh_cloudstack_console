@@ -17,7 +17,7 @@
 require 'yaml'
 require "optparse"
 
-config_file = nil
+config_file = File.expand_path("../cloudstack.yaml", __FILE__)
 
 opts_parser = OptionParser.new do |opts|
   opts.on("-c", "--config FILE") { |file| config_file = file }
