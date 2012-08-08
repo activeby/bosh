@@ -13,7 +13,7 @@ module Bosh
         @options = options.dup
         validate_options!
 
-        #@logger = Bosh::Clouds::Config.logger
+        @logger = Bosh::Clouds::Config.logger
 
         compute_init_options = @options['cloudstack'].select { |key, _|
           %w(cloudstack_api_key cloudstack_secret_access_key cloudstack_host).include? key

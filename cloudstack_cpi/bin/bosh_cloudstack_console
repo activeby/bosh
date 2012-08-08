@@ -5,15 +5,25 @@
 # Usage example:
 #      $ cd /bosh-installation-dir/bosh/cloudstack_cpi/bin
 #      $ ruby bosh_cloudstack_console -c /path-to-file/cloudstack_cpi_secure_config.yml
+#      or just
+#      $ ruby bosh_cloudstack_console
 
-# Put your access credentials securely in separate file.
-# contents of the file cloudstack_cpi_secure_config.yml:
+# Put your access credentials securely in a separate file.
+# Contents of the file cloudstack.yaml:
 # ---
 # access_key_id: key
 # secret_access_key: key
 # service_endpoint: domain
 
+# run in the bundler context
+gemfile = File.expand_path("../../Gemfile", __FILE__)
+if File.exists?(gemfile)
+  ENV["BUNDLE_GEMFILE"] = gemfile
+  require "rubygems"
+  require "bundler/setup"
+end
 
+# parse config with cloudstack access credentials
 require 'yaml'
 require "optparse"
 
@@ -44,13 +54,19 @@ puts "=> CloudStack service endpoint is #{@service_endpoint}"
 
 puts "=> Performing test operations with cloudstack_cpi code"
 
-#### TESTS ####
 
-require "../../cli/lib/cli"
-
+# add logger
+#require "../../cli/lib/cli"
 $:.unshift(File.expand_path("../../lib", __FILE__))
-
 require "../lib/bosh_cloudstack_cpi"
+
+require 'ostruct'
+require 'logger'
+
+cloud_config = OpenStruct.new(:logger => Logger.new(STDOUT))
+Bosh::Clouds::Config.configure(cloud_config)
+
+#### TESTS ####
 
 cld = Bosh::CloudStackCloud::Cloud.new({
                                            'cloudstack' => {
