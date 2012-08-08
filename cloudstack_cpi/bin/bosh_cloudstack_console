@@ -1,0 +1,94 @@
+#!/usr/bin/env ruby
+
+# Copyright (c) 2012 Active Technologies, Inc.
+
+# Usage example:
+#      $ cd /bosh-installation-dir/bosh/cloudstack_cpi/bin
+#      $ ruby bosh_cloudstack_console -c /path-to-file/cloudstack_cpi_secure_config.yml
+#      or just
+#      $ ruby bosh_cloudstack_console
+
+# Put your access credentials securely in a separate file.
+# Contents of the file cloudstack.yaml:
+# ---
+# access_key_id: key
+# secret_access_key: key
+# service_endpoint: domain
+
+# If you want to run this script in the interactive mode run it with -i switch
+#      $ ./bosh_cloudstack_console -i
+
+
+# run in the bundler context
+gemfile = File.expand_path("../../Gemfile", __FILE__)
+if File.exists?(gemfile)
+  ENV["BUNDLE_GEMFILE"] = gemfile
+  require "rubygems"
+  require "bundler/setup"
+end
+
+# parse config with cloudstack access credentials
+require 'yaml'
+require "optparse"
+
+config_file = File.expand_path("../cloudstack.yaml", __FILE__)
+irb = false
+opts_parser = OptionParser.new do |opts|
+  opts.on("-c", "--config FILE", "Security configuration file") { |file| config_file = file }
+  opts.on("-i", "--irb", "Interactive mode") { |i| irb = i }
+end
+
+opts_parser.parse!
+
+unless config_file
+  puts opts_parser
+  exit(1)
+end
+
+puts "=> Loading secure configuration from #{config_file}"
+
+def get_config(config_file)
+  config = YAML.load(File.read(config_file))
+
+  {
+      'cloudstack' => {
+          'cloudstack_api_key' => config["access_key_id"],
+          'cloudstack_secret_access_key' => config["secret_access_key"],
+          'cloudstack_host' => config["service_endpoint"]
+      }
+  }
+end
+
+@config = get_config(config_file)
+
+puts "=> CloudStack service endpoint is #{@config['cloudstack']['cloudstack_host']}"
+
+# add logger
+$:.unshift(File.expand_path("../../lib", __FILE__))
+require "../lib/bosh_cloudstack_cpi"
+
+require 'ostruct'
+require 'logger'
+
+cloud_config = OpenStruct.new(:logger => Logger.new(STDOUT))
+Bosh::Clouds::Config.configure(cloud_config)
+
+# irb mode
+module ConsoleHelper
+  def cld
+    @cld ||= Bosh::CloudStackCloud::Cloud.new(@config)
+  end
+end
+include ConsoleHelper
+
+if irb
+  require "irb"
+  #require "irb/completion"
+
+  IRB.start
+end
+
+#### Test manually ####
+puts "=> Performing test operations with cloudstack_cpi code"
+
+cld.create_stemcell "image", {}
