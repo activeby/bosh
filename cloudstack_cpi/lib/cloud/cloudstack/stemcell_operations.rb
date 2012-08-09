@@ -32,7 +32,11 @@ module Bosh
       # @param [String] stemcell stemcell id that was once returned by {#create_stemcell}
       # @return nil
       def delete_stemcell(stemcell_id)
-        not_implemented(:delete_stemcell)
+        with_thread_name("delete_stemcell(#{stemcell_id})") do
+          @logger.info("Deleting `#{stemcell_id}' stemcell")
+          image = @cloudstack.images.get(stemcell_id)
+          image.destroy
+        end
       end
 
       private
