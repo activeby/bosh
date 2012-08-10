@@ -19,6 +19,7 @@ require "cloud/cloudstack/disk_operations"
 require "cloud/cloudstack/vm_operations"
 require "cloud/cloudstack/deployment_validation"
 require "cloud/cloudstack/network_configuration"
+require "cloud/cloudstack/helpers"
 require "cloud/cloudstack/cloud"
 module Bosh
   module Clouds

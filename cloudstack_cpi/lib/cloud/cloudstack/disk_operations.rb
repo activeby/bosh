@@ -13,8 +13,6 @@ module Bosh
       # to use size parameter in cloudstack a disk_offering must be created with "iscustomized"=>true
       # create disk method is not completed yet.
 
-      DEFAULT_AVAILABILITY_ZONE = "2"
-
       def create_disk(size, server_id = nil)
         with_thread_name("create_disk(#{size}, #{server_id})") do
 
@@ -30,18 +28,14 @@ module Bosh
             cloud_error("CloudStack CPI maximum disk size is 1 TiB")
           end
 
-          if server_id
-            server = @cloudstack.servers.get(server_id)
-            availability_zone = server.zone_id
-          else
-            availability_zone = DEFAULT_AVAILABILITY_ZONE
-          end
+          availability_zone = determine_availability_zone(server_id)
+
+          disk_offering_id = determine_disk_offering(size)
 
           volume_params = {
               :name => "volume-#{generate_unique_name}",
-              :size => (size / 1024.0).ceil,
               :zone_id => availability_zone,
-              :disk_offering_id => "141"
+              :disk_offering_id => disk_offering_id.to_s
           }
 
           @logger.info("Creating new volume...")
@@ -122,6 +116,32 @@ module Bosh
       end
 
       private
+
+      def mb_to_gb(size)
+        (size / 1024.0).ceil
+      end
+
+      def determine_availability_zone(server_id)
+        if server_id
+          server = @cloudstack.servers.get(server_id)
+          server.zone_id
+        else
+          @default_availability_zone
+        end
+      end
+
+      def determine_disk_offering size
+        available_offerings = @cloudstack.list_disk_offerings['listdiskofferingsresponse']['diskoffering']
+        offerings = available_offerings.select {|ofr| @disk_offerings_for_bosh.include?(ofr['id']) }
+
+        size_gb = mb_to_gb size
+        offerings.sort_by! { |ofr| ofr['disksize'] }
+        offerings.each do |offering|
+          return offering['id'] if offering['disksize'] >= size_gb
+        end
+
+        cloud_error "Cannot find disk offering with size greater than #{size} Mb"
+      end
 
       def generate_unique_name
         UUIDTools::UUID.random_create.to_s
