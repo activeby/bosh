@@ -3,6 +3,8 @@ require 'fog'
 module Bosh
   module CloudStackCloud
     class Cloud < Bosh::Cloud
+      attr_reader :cloudstack
+
       ##
       # Cloud initialization
       # Initialize BOSH OpenStack CPI
