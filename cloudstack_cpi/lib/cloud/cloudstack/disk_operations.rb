@@ -13,8 +13,6 @@ module Bosh
       # to use size parameter in cloudstack a disk_offering must be created with "iscustomized"=>true
       # create disk method is not completed yet.
 
-      DEFAULT_AVAILABILITY_ZONE = "2"
-
       def create_disk(size, server_id = nil)
         with_thread_name("create_disk(#{size}, #{server_id})") do
 
@@ -30,29 +28,22 @@ module Bosh
             cloud_error("CloudStack CPI maximum disk size is 1 TiB")
           end
 
-          if server_id
-            server = @cloudstack.servers.get(server_id)
-            #puts server.class
-            availability_zone = server.zone_id
-          else
-            availability_zone = DEFAULT_AVAILABILITY_ZONE
-          end
+          availability_zone = determine_availability_zone(server_id)
+
+          disk_offering_id = determine_disk_offering(size)
 
           volume_params = {
               :name => "volume-#{generate_unique_name}",
-              #:size => (size / 1024.0).ceil,
               :zone_id => availability_zone,
-              :disk_offering_id => "141"
+              :disk_offering_id => disk_offering_id.to_s
           }
 
           @logger.info("Creating new volume...")
           volume = @cloudstack.volumes.create(volume_params)
-          #puts volume.class
-          volume.wait_for{volume.state == 'Allocated'}
+          #volume.wait_for{volume.state == 'Allocated'}
+          volume.wait_for{ready?}
           state = volume.state
           @logger.info("New volume `#{volume.id}' created, state is `#{state}'")
-          #wait_resource(volume.ready?, :Allocated)
-          #volume.wait_for{'Allocated'}
 
           volume.id.to_s
         end
@@ -67,9 +58,10 @@ module Bosh
       def delete_disk(disk_id)
         with_thread_name("delete_disk(#{disk_id})") do
           volume = @cloudstack.volumes.get(disk_id)
+          puts volume
           #state = volume.ready?
           state = volume.state
-          cloud_error("Cannot delete volume `#{disk_id}', state is #{state}") if state.to_sym != :Allocated
+          cloud_error("Cannot delete volume `#{disk_id}', detach it from VM.") if state.to_sym != :Allocated
           @logger.info("Deleting volume `#{disk_id}' with state `#{state}'")
           volume.destroy
           #done = volume.destroy
@@ -91,13 +83,13 @@ module Bosh
           server = @cloudstack.servers.get(server_id)
           volume = @cloudstack.volumes.get(disk_id)
           volume.attach(server_id)
-          #device_name = attach_volume(server, volume)
+          volume.wait_for{server == true}
 
+          # uncomment and test when method ready
           #update_agent_settings(server) do |settings|
           #  settings["disks"] ||= {}
           #  settings["disks"]["persistent"] ||= {}
           #  settings["disks"]["persistent"][disk_id] = device_name
-          #end
         end
       end
 
@@ -112,8 +104,9 @@ module Bosh
           server = @cloudstack.servers.get(server_id)
           volume = @cloudstack.volumes.get(disk_id)
           volume.detach
-          #detach_volume(server, volume)
+          volume.wait_for{server != true}
 
+          # uncomment and test when method ready
           #update_agent_settings(server) do |settings|
           #  settings["disks"] ||= {}
           #  settings["disks"]["persistent"] ||= {}
@@ -124,10 +117,37 @@ module Bosh
 
       private
 
+      def mb_to_gb(size)
+        (size / 1024.0).ceil
+      end
+
+      def determine_availability_zone(server_id)
+        if server_id
+          server = @cloudstack.servers.get(server_id)
+          server.zone_id
+        else
+          @default_availability_zone
+        end
+      end
+
+      def determine_disk_offering size
+        available_offerings = @cloudstack.list_disk_offerings['listdiskofferingsresponse']['diskoffering']
+        offerings = available_offerings.select {|ofr| @disk_offerings_for_bosh.include?(ofr['id']) }
+
+        size_gb = mb_to_gb size
+        offerings.sort_by! { |ofr| ofr['disksize'] }
+        offerings.each do |offering|
+          return offering['id'] if offering['disksize'] >= size_gb
+        end
+
+        cloud_error "Cannot find disk offering with size greater than #{size} Mb"
+      end
+
       def generate_unique_name
         UUIDTools::UUID.random_create.to_s
       end
 
+      # add initialize from openstack CPI to cloud.rb
       def update_agent_settings(server)
         unless block_given?
           raise ArgumentError, "block is not provided"
@@ -140,54 +160,36 @@ module Bosh
         @registry.update_settings(server.name, settings)
       end
 
-      ## TODO rewrite attach and detach for cloudstack
-      # Attaches an OpenStack volume to an OpenStack server
-      # @param [Fog::Compute::OpenStack::Server] server OpenStack server
-      # @param [Fog::Compute::OpenStack::Volume] volume OpenStack volume
-      def attach_volume(server, volume)
-        volume_attachments = @cloudstack.get_server_volumes(server.id).body['volumeAttachments']
-        device_names = Set.new(volume_attachments.collect! {|v| v["device"] })
-        new_attachment = nil
-
-        ("c".."z").each do |char|
-          dev_name = "/dev/vd#{char}"
-          if device_names.include?(dev_name)
-            @logger.warn("`#{dev_name}' on `#{server.id}' is taken")
-            next
-          end
-          @logger.info("Attaching volume `#{volume.id}' to `#{server.id}', device name is `#{dev_name}'")
-          if volume.attach(server.id, dev_name)
-            state = volume.status
-            wait_resource(volume, state, :"in-use")
-            new_attachment = dev_name
-          end
-          break
-        end
-
-        if new_attachment.nil?
-          cloud_error("Server has too many disks attached")
-        end
-
-        new_attachment
-      end
-
-      ##
-      # Detaches an OpenStack volume from an OpenStack server
-      # @param [Fog::Compute::OpenStack::Server] server OpenStack server
-      # @param [Fog::Compute::OpenStack::Volume] volume OpenStack volume
-      def detach_volume(server, volume)
-        volume_attachments = @openstack.get_server_volumes(server.id).body['volumeAttachments']
-        device_map = volume_attachments.collect! {|v| v["volumeId"] }
-
-        if !device_map.include?(volume.id)
-          cloud_error("Disk `#{volume.id}' is not attached to server `#{server.id}'")
-        end
-
-        state = volume.status
-        @logger.info("Detaching volume `#{volume.id}' from `#{server.id}', state is `#{state}'")
-        volume.detach(server.id, volume.id)
-        wait_resource(volume, state, :available)
-      end
+      ## attaching volumes to mountpoint defined by deviceid doesn't work for cloudstack CPI 2.2.8
+      ## cloudstack mounts the volumes in alphabetical order of /dev/vd* no matter deviceid
+      # Attaches an CloudStack volume to an CloudStack server (from OpenStack CPI)
+      # @param [Fog::Compute::OpenStack::Server] server CloudStack server
+      # @param [Fog::Compute::OpenStack::Volume] volume CloudStack volume
+      #def attach_volume(server, volume)
+      #  volume_attachments = @cloudstack.list_volumes(virtualmachineid: server.id)["listvolumesresponse"]["volume"]
+      #  device_ids = Set.new(volume_attachments.map {|v| v["deviceid"] })
+      #  new_attachment = nil
+      #  (1..9).each do |id|
+      #    dev_name = "/dev/vd#{id}" # create a mapping for 1..9 to b..j
+      #    if device_ids.include?(dev_name)
+      #      @logger.warn("`#{dev_name}' on `#{server.id}' is taken")
+      #      next
+      #    end
+      #    @logger.info("Attaching volume `#{volume.id}' to `#{server.id}', device name is `#{dev_name}'")
+      #    if volume.attach(server.id, device_id)
+      #      state = volume.status
+      #      wait_resource(volume, state, :"in-use")
+      #      new_attachment = dev_name
+      #    end
+      #    break
+      #  end
+      #
+      #  if new_attachment.nil?
+      #    cloud_error("Server has too many disks attached")
+      #  end
+      #
+      #  new_attachment
+      #end
     end
   end
 end

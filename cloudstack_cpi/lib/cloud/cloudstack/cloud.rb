@@ -7,24 +7,27 @@ module Bosh
 
       ##
       # Cloud initialization
-      # Initialize BOSH OpenStack CPI
+      # Initialize BOSH CloudStack CPI
       #
       # @param [Hash] options cloud options
       #
+
       def initialize(options)
         @options = options.dup
         validate_options!
 
         @logger = Bosh::Clouds::Config.logger
 
-        compute_init_options = @options['cloudstack'].select { |key, _|
+        cloudstack_config = @options['cloudstack']
+        compute_init_options = cloudstack_config.select { |key, _|
           %w(cloudstack_api_key cloudstack_secret_access_key cloudstack_host).include? key
         }
         compute_init_options[:provider] = "CloudStack"
 
         @cloudstack = Fog::Compute.new compute_init_options
 
-
+        @disk_offerings_for_bosh = cloudstack_config['supported_disk_offerings']
+        @default_availability_zone = cloudstack_config['default_availability_zone']
 #options[:cloudstack_session_id] = '?'
 #options[:cloudstack_session_key] = '?'
 #options[:cloudstack_path] = '/client/api'
@@ -54,6 +57,8 @@ module Bosh
       include NetworkConfiguration
 
       include DeploymentValidation
+
+      include OperationsHelpers
 
       private
 
