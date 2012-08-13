@@ -8,6 +8,10 @@ module Bosh
 
     DEFAULT_TIMEOUT = 3600 # seconds
 
+    def generate_unique_name
+      UUIDTools::UUID.random_create.to_s
+    end
+
     ##
     # Raises CloudError exception
     #
@@ -39,8 +43,9 @@ module Bosh
 
         begin
           state = resource.send(state_method)
-        rescue AWS::EC2::Errors::InvalidAMIID::NotFound,
-               AWS::EC2::Errors::InvalidInstanceID::NotFound => e
+        rescue @logger.info("Exception occurred. #{desc} has no method #{state_method}.")
+               #AWS::EC2::Errors::InvalidAMIID::NotFound,
+               #AWS::EC2::Errors::InvalidInstanceID::NotFound => e
           # ugly workaround for AWS race conditions:
           # 1) sometimes when we upload a stemcell and proceed to create a VM
           #    from it, AWS reports that the AMI is missing
@@ -63,6 +68,7 @@ module Bosh
           cloud_error("#{desc} state is #{state}, expected #{target_state}")
         end
 
+        @logger.info("#{desc} has state #{state}.")
         break if state == target_state
 
         sleep(1)
