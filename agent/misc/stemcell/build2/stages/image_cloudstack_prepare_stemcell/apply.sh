@@ -8,7 +8,9 @@ base_dir=$(readlink -nf $(dirname $0)/../..)
 source $base_dir/lib/prelude_apply.bash
 
 disk_image_name=root.img
+qcow2_image_name=root.qcow2
 
 pushd $work
-tar zcf stemcell/image $disk_image_name
+qemu-img convert -f raw -O qcow2 $disk_image_name $qcow2_image_name
+tar zcf stemcell/image $qcow2_image_name
 popd

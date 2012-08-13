@@ -11,9 +11,9 @@ module Bosh
       def create_stemcell(image_path, cloud_properties)
         with_thread_name("create_stemcell(#{image_path}...)") do
           Dir.mktmpdir do |tmp_dir|
-            image_path = extract_and_convert_image(image_path, tmp_dir)
+            image_path = extract_image(image_path, tmp_dir)
 
-            symlink_name = rand(36**8).to_s(36) + ".qcow2"   #TODO: maybe use generate_unique_name() instead?
+            symlink_name = "#{generate_unique_name}.qcow2"
 
             link = cloud_properties[:web_root] + "/#{symlink_name}"
             File.symlink(image_path, link)
@@ -21,6 +21,7 @@ module Bosh
             image_url = "http://" + cloud_properties[:public_dns_name] + "/#{symlink_name}"
 
             template_id = create_cloudstack_template image_url, cloud_properties
+            File.delete(link)
             return template_id.to_s
           end
         end
@@ -57,13 +58,15 @@ module Bosh
                     "tar exit status #{$?.exitstatus}: #{tar_output}")
         end
 
-        image_path = File.join(to_tmp_dir, "root.img")
+        image_path = File.join(to_tmp_dir, "root.qcow2")
         unless File.exists?(image_path)
           cloud_error("Root image is missing from stemcell archive")
         end
         image_path
       end
 
+      # TODO: function is no longer used
+      # to remove
       def extract_and_convert_image(from_tarball, to_tmp_dir)
         # TODO: move this code into the class that can be reused among different CPI implementations
         # it this method will host the template somewhere (CloudStack requirement) then it is ok not to share it
