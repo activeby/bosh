@@ -8,6 +8,7 @@ module Bosh
 
     DEFAULT_TIMEOUT = 3600 # seconds
 
+    # generates unique_name
     def generate_unique_name
       UUIDTools::UUID.random_create.to_s
     end
@@ -22,6 +23,7 @@ module Bosh
       raise Bosh::Clouds::CloudError, message
     end
 
+    # ensure the resource has the required state
     def wait_resource(resource, target_state, state_method = :status,
                       timeout = DEFAULT_TIMEOUT)
 
