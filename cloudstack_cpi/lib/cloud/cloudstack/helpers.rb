@@ -6,61 +6,55 @@ module Bosh
   module CloudStackCloud
     module OperationsHelpers
 
-    DEFAULT_TIMEOUT = 3600 # seconds
+      DEFAULT_TIMEOUT = 3600 # seconds
 
-    # generates unique_name
-    def generate_unique_name
-      UUIDTools::UUID.random_create.to_s
-    end
-
-    ##
-    # Raises CloudError exception
-    #
-    def cloud_error(message)
-      if @logger
-        @logger.error(message)
+      def generate_unique_name
+        UUIDTools::UUID.random_create.to_s
       end
-      raise Bosh::Clouds::CloudError, message
-    end
 
-    # ensure the resource has the required state
-    def wait_resource(resource, target_state, state_method = :status,
-                      timeout = DEFAULT_TIMEOUT)
+      ##
+      # Raises CloudError exception
+      #
+      def cloud_error(message)
+        if @logger
+          @logger.error(message)
+        end
+        raise Bosh::Clouds::CloudError, message
+      end
 
-      started_at = Time.now
-      failures = 0
-      desc = resource.to_s
+      # wait until resource will be put into the required state
+      def wait_resource(resource, target_state, state_method = :status, timeout = DEFAULT_TIMEOUT)
+        @logger.debug("Waiting for #{desc} to be #{target_state}") if @logger
+        started_at = Time.now
+        desc = resource.to_s
 
-      loop do
-        duration = Time.now - started_at
+        loop do
+          error_if_timed_out!(started_at, timeout, desc, target_state)
 
-        if duration > timeout
-          cloud_error("Timed out waiting for #{desc} to be #{target_state}")
+          state = resource.send(state_method)
+
+          ensure_no_error_state!(desc, state, target_state)
+
+          @logger.info("#{desc} has state #{state}.")
+          break if state == target_state
+          sleep(1)
         end
 
         if @logger
-          @logger.debug("Waiting for #{desc} to be #{target_state} " \
-                        "(#{duration}s)")
+          total = Time.now - started_at
+          @logger.info("#{desc} is now #{target_state}, took #{total}s")
         end
+      end
 
-        begin
-          state = resource.send(state_method)
-        rescue @logger.info("Exception occurred. #{desc} has no method #{state_method}.")
-               #AWS::EC2::Errors::InvalidAMIID::NotFound,
-               #AWS::EC2::Errors::InvalidInstanceID::NotFound => e
-          # ugly workaround for AWS race conditions:
-          # 1) sometimes when we upload a stemcell and proceed to create a VM
-          #    from it, AWS reports that the AMI is missing
-          # 2) sometimes when we create a new EC2 instance, AWS reports that
-          #    the instance it returns is missing
-          # in both cases we just wait a little and retry...
-          raise e if failures > 3
-          failures += 1
-          @logger.error("#{e.message}: #{desc}")
-          sleep(1)
-          next
+      private
+      def error_if_timed_out!(started_at, timeout, desc, target_state)
+        duration = Time.now - started_at
+        if duration > timeout
+          cloud_error("Timed out waiting for #{desc} to be #{target_state}")
         end
+      end
 
+      def ensure_no_error_state!(desc, state, target_state)
         # This is not a very strong convention, but some resources
         # have 'error' and 'failed' states, we probably don't want to keep
         # waiting if we're in these states. Alternatively we could introduce a
@@ -69,18 +63,7 @@ module Bosh
         if state == :error || state == :failed
           cloud_error("#{desc} state is #{state}, expected #{target_state}")
         end
-
-        @logger.info("#{desc} has state #{state}.")
-        break if state == target_state
-
-        sleep(1)
       end
-
-      if @logger
-        total = Time.now - started_at
-        @logger.info("#{desc} is now #{target_state}, took #{total}s")
-      end
-    end
     end
   end
 end
