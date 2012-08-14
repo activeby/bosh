@@ -75,10 +75,10 @@ module Bosh
       # @return nil
       def attach_disk(server_id, disk_id)
         with_thread_name("attach_disk(#{server_id}, #{disk_id})") do
-          server = @cloudstack.servers.get(server_id)
           volume = @cloudstack.volumes.get(disk_id)
           volume.attach(server_id)
-          volume.wait_for{server == true}
+          volume.wait_for{volume.send(:server_id)}
+          @logger.info("Volume is successfully attached.")
 
           # uncomment and test when method ready
           #update_agent_settings(server) do |settings|
@@ -96,10 +96,10 @@ module Bosh
       # @return nil
       def detach_disk(server_id, disk_id)
         with_thread_name("detach_disk(#{server_id}, #{disk_id})") do
-          server = @cloudstack.servers.get(server_id)
           volume = @cloudstack.volumes.get(disk_id)
           volume.detach
-          volume.wait_for{server != true}
+          volume.wait_for{volume.send(:server_id) == nil}
+          @logger.info("Volume is successfully detached.")
 
           # uncomment and test when method ready
           #update_agent_settings(server) do |settings|
@@ -107,6 +107,16 @@ module Bosh
           #  settings["disks"]["persistent"] ||= {}
           #  settings["disks"]["persistent"].delete(disk_id)
           #end
+        end
+      end
+
+      def get_disk_property(disk_id, property = "all")
+        with_thread_name("get_disk_property(#{disk_id}, #{property})") do
+          disk_properties = @cloudstack.list_volumes('id' => disk_id)["listvolumesresponse"]["volume"].first
+          if property == "all"
+            return disk_properties
+          end
+          return disk_properties[property.to_s]
         end
       end
 
