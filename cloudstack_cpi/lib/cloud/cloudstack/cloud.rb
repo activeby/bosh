@@ -16,7 +16,7 @@ module Bosh
         @options = options.dup
         validate_options!
 
-        @logger = Bosh::Clouds::Config.logger
+        @logger = Bosh::Clouds::Config.logger if @logger
 
         cloudstack_config = @options['cloudstack']
         compute_init_options = cloudstack_config.select { |key, _|
