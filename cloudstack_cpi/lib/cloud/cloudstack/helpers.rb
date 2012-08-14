@@ -22,12 +22,12 @@ module Bosh
         raise Bosh::Clouds::CloudError, message
       end
 
-      # wait until resource will be put into the required state
+      # wait until the resource will be put into the target state
       def wait_resource(resource, target_state, state_method = :status, timeout = DEFAULT_TIMEOUT)
-        @logger.debug("Waiting for #{desc} to be #{target_state}") if @logger
-        started_at = Time.now
         desc = resource.to_s
+        @logger.debug("Waiting for #{desc} to be #{target_state}") if @logger
 
+        started_at = Time.now
         loop do
           error_if_timed_out!(started_at, timeout, desc, target_state)
 
@@ -35,14 +35,16 @@ module Bosh
 
           ensure_no_error_state!(desc, state, target_state)
 
-          @logger.info("#{desc} has state #{state}.")
+          @logger.debug("#{desc} has state #{state}.")
           break if state == target_state
+
           sleep(1)
+          resource.reload
         end
 
         if @logger
           total = Time.now - started_at
-          @logger.info("#{desc} is now #{target_state}, took #{total}s")
+          @logger.debug("#{desc} is now #{target_state}, took #{total}s")
         end
       end
 
