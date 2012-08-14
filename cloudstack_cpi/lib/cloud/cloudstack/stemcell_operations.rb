@@ -13,13 +13,14 @@ module Bosh
           Dir.mktmpdir do |tmp_dir|
             image_path = extract_image(image_path, tmp_dir)
 
-            symlink_name = "#{generate_unique_name}.qcow2"
+            unique_name = generate_unique_name
+            cloud_properties[:unique_name] = unique_name
+            symlink_name = unique_name + ".qcow2"
 
             link = cloud_properties[:web_root] + "/#{symlink_name}"
             File.symlink(image_path, link)
 
             image_url = "http://" + cloud_properties[:public_dns_name] + "/#{symlink_name}"
-
             template_id = create_cloudstack_template image_url, cloud_properties
             File.delete(link)
             return template_id.to_s
@@ -34,7 +35,7 @@ module Bosh
       # @return nil
       def delete_stemcell(stemcell_id)
         with_thread_name("delete_stemcell(#{stemcell_id})") do
-          @logger.info("Deleting `#{stemcell_id}' stemcell")
+          @logger.info("Deleting `#{stemcell_id}' stemcell") if @logger
           image = get_stemcell(stemcell_id)
           image.destroy
         end
@@ -113,7 +114,7 @@ module Bosh
 
         template_params = {
             :command => "registerTemplate",
-            :displaytext => "BOSH-#{generate_unique_name}",
+            :displaytext => "BOSH-" + cloud_properties[:unique_name],
             :format => cloud_properties[:template_format],
             :hypervisor => cloud_properties[:hypervisor],
             :name => "BOSH",
@@ -123,18 +124,13 @@ module Bosh
         }
 
         template = @cloudstack.request(template_params)
-
         id = template["registertemplateresponse"]["template"][0]["id"]
-
         image = get_stemcell(id)
-        image.wait_for { ready? }
-
-        @logger.info("Creating new image...")
+        wait_resource(image, "Download Complete")
+        @logger.info("Creating new image...") if @logger
+        return image.id
       end
 
-      def generate_unique_name  # TODO: move to helpers.rb
-        UUIDTools::UUID.random_create.to_s
-      end
     end
   end
 end

@@ -35,7 +35,7 @@ module Bosh
 
           ensure_no_error_state!(desc, state, target_state)
 
-          @logger.debug("#{desc} has state #{state}.")
+          @logger.debug("#{desc} has state #{state}.") if @logger
           break if state == target_state
 
           sleep(1)
