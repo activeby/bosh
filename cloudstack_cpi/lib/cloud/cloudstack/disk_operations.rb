@@ -40,8 +40,7 @@ module Bosh
 
           @logger.info("Creating new volume...")
           volume = @cloudstack.volumes.create(volume_params)
-          #volume.wait_for{volume.state == 'Allocated'}
-          volume.wait_for{ready?}
+          wait_resource(volume, "Allocated", :state)
           state = volume.state
           @logger.info("New volume `#{volume.id}' created, state is `#{state}'")
 
@@ -58,17 +57,13 @@ module Bosh
       def delete_disk(disk_id)
         with_thread_name("delete_disk(#{disk_id})") do
           volume = @cloudstack.volumes.get(disk_id)
-          puts volume
-          #state = volume.ready?
-          state = volume.state
-          cloud_error("Cannot delete volume `#{disk_id}', detach it from VM.") if state.to_sym != :Allocated
+          state = volume.ready?
+          cloud_error("Cannot delete volume `#{disk_id}'.") if state != true
           @logger.info("Deleting volume `#{disk_id}' with state `#{state}'")
-          volume.destroy
-          #done = volume.destroy
-          #cloud_error("Cannot delete volume `#{disk_id}', state is #{state}") if done != true
-          #state = volume.ready?
-          #wait_resource(volume, state, :deleted)
-          @logger.info("Volume `#{disk_id}' deleted")
+          response = volume.destroy
+          if response
+            @logger.info("Volume `#{disk_id}' deleted")
+          end
         end
       end
 
@@ -143,11 +138,7 @@ module Bosh
         cloud_error "Cannot find disk offering with size greater than #{size} Mb"
       end
 
-      def generate_unique_name
-        UUIDTools::UUID.random_create.to_s
-      end
-
-      # add initialize from openstack CPI to cloud.rb
+      # TODO add initialize from openstack CPI to cloud.rb
       def update_agent_settings(server)
         unless block_given?
           raise ArgumentError, "block is not provided"
