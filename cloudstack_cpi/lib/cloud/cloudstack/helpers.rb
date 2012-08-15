@@ -12,6 +12,11 @@ module Bosh
         UUIDTools::UUID.random_create.to_s
       end
 
+      # could be useful to get properties of VM or disk...
+      def get_properties(resource, id, property)
+
+      end
+
       ##
       # Raises CloudError exception
       #
@@ -23,7 +28,7 @@ module Bosh
       end
 
       # wait until the resource will be put into the target state
-      def wait_resource(resource, target_state, state_method = :status, timeout = DEFAULT_TIMEOUT)
+      def wait_resource(resource, target_state, state_method = :state, timeout = DEFAULT_TIMEOUT)
         desc = resource.to_s
         @logger.debug("Waiting for #{desc} to be #{target_state}") if @logger
 
@@ -69,4 +74,3 @@ module Bosh
     end
   end
 end
-
