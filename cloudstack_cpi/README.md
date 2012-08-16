@@ -7,3 +7,6 @@ TODO:
 1) Add network support
 2) Add stemcell support
 3) Implement CPI class
+
+# Network configuration
+see https://github.com/cloudfoundry/oss-docs/blob/master/bosh/documentation/documentation.md#network-spec
