@@ -47,7 +47,7 @@ module Bosh
         #TODO: replace with @cloudstack.images.get(stemcell_id) when fix for this method will be released in fog 1.5+
         options = {'templatefilter' => 'self', 'id' => stemcell_id}
         template = @cloudstack.list_templates(options)["listtemplatesresponse"]["template"].first
-        @cloudstack.image.new(template)
+        @cloudstack.images.new(template)
       end
 
       def extract_image(from_tarball, to_tmp_dir)
@@ -118,15 +118,15 @@ module Bosh
             :format => cloud_properties[:template_format],
             :hypervisor => cloud_properties[:hypervisor],
             :name => "BOSH",
-            :ostypeid => 1, # hardcoded - bad
+            :ostypeid => 1, # TODO: hardcoded - bad
             :url => image_url,
-            :zoneid => 4, # hardcoded - bad
+            :zoneid => 4, # TODO: hardcoded - bad
         }
 
         template = @cloudstack.request(template_params)
         id = template["registertemplateresponse"]["template"][0]["id"]
         image = get_stemcell(id)
-        wait_resource(image, "Download Complete")
+        wait_resource(image, "Download Complete", :status)
         @logger.info("Creating new image...") if @logger
         return image.id
       end
