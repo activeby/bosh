@@ -31,33 +31,33 @@ module Bosh
       # @param [String] stemcell stemcell id that was once returned by {#create_stemcell}
       # @param [Hash] resource_pool cloud specific properties describing the resources needed
       #               for this VM
-      # @param [Hash] networks list of networks and their settings needed for this VM
+      # @param [Hash] network_spec network properties for this VM
       # @param [optional, String, Array] disk_locality disk id(s) if known of the disk(s) that will be
       #                                    attached to this vm
       # @param [optional, Hash] env environment that will be passed to this vm
       # @return [String] opaque id later used by {#configure_networks}, {#attach_disk},
       #                  {#detach_disk}, and {#delete_vm}
       def create_vm(agent_id, stemcell_id, resource_pool,
-          networks, disk_locality = nil, env = nil)
+          network_spec, disk_locality = nil, env = nil)
         not_implemented(:create_vm)
       end
 
       ##
       # Deletes a VM
       #
-      # @param [String] vm vm id that was once returned by {#create_vm}
+      # @param [String] vm server_id that was once returned by {#create_vm}
       # @return nil
-      def delete_vm(vm_id)
+      def delete_vm(server_id)
         not_implemented(:delete_vm)
       end
 
       ##
       # Reboots a VM
       #
-      # @param [String] vm vm id that was once returned by {#create_vm}
+      # @param [String] vm server_id that was once returned by {#create_vm}
       # @param [Optional, Hash] CPI specific options (e.g hard/soft reboot)
       # @return nil
-      def reboot_vm(vm_id)
+      def reboot_vm(server_id)
         not_implemented(:reboot_vm)
       end
     end
