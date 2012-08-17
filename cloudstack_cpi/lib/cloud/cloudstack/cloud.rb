@@ -16,7 +16,7 @@ module Bosh
         @options = options.dup
         validate_options!
 
-        @logger = Bosh::Clouds::Config.logger if @logger
+        @logger = Bosh::Clouds::Config.logger
 
         cloudstack_config = @options['cloudstack']
         compute_init_options = cloudstack_config.select { |key, _|
@@ -48,17 +48,17 @@ module Bosh
 #        compute.images.create(template_create_params)
       end
 
+      include OperationsHelpers
+
       include StemcellOperations
 
       include VmOperations
 
       include DiskOperations
 
-      include NetworkConfiguration
+      include NetworkOperations
 
       include DeploymentValidation
-
-      include OperationsHelpers
 
       private
 
