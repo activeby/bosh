@@ -39,7 +39,64 @@ module Bosh
       #                  {#detach_disk}, and {#delete_vm}
       def create_vm(agent_id, stemcell_id, resource_pool,
           network_spec, disk_locality = nil, env = nil)
-        not_implemented(:create_vm)
+        with_thread_name("create_vm(#{agent_id}, ...)") do
+          network_configurator = NetworkConfigurator.new(network_spec)
+
+          server_name = "vm-#{generate_unique_name}"
+
+          security_groups = network_configurator.security_groups(@default_security_groups)
+          @logger.debug("using security groups: #{security_groups.join(', ')}")
+
+          image = @openstack.images.find { |i| i.id == stemcell_id }
+          if image.nil?
+            cloud_error("OpenStack CPI: image #{stemcell_id} not found")
+          end
+
+          flavor = @openstack.flavors.find { |f| f.name == resource_pool["instance_type"] }
+          if flavor.nil?
+            cloud_error("OpenStack CPI: flavor #{resource_pool["instance_type"]} not found")
+          end
+
+          # http://download.cloud.com/releases/2.2.0/api_2.2.8/user/deployVirtualMachine.html
+          # CloudStack 2.2.8 User API Reference
+          #
+          # deployVirtualMachine
+          #
+          # Creates and automatically starts a virtual machine
+          # based on a service offering, disk offering, and template.
+          #
+          #  :image_id=>1095,
+          #  :flavor_id=>27,
+          #  :zone_id=>4,
+          server_params = {
+            :flavor_id => flavor.id,
+            :image_id => image.id,
+            # zone_id, account, diskofferingid
+            :displayname => server_name, # an optional user generated name for the virtual machine
+            # domainid, group, hostid, hypervisor, keypair
+            :name => server_name, # host name for the virtual machine
+            # networkids, securitygroupids
+            :securitygroupnames => "default"
+            # size, userdata        
+          }
+
+          server_params[:zone_id] = 4 # zoneid - availability zone for the vm
+
+          server = @cloudstack.servers.create(server_params)
+          state = server.state
+
+          @logger.info("Creating new server `#{server.id}', state is `#{state}'")
+          wait_resource(server, state, :active, :state)
+
+          @logger.info("Configuring network for `#{server.id}'")
+          network_configurator.configure(@openstack, server)
+
+          @logger.info("Updating server settings for `#{server.id}'")
+          settings = initial_agent_settings(server_name, agent_id, network_spec, environment)
+          @registry.update_settings(server.name, settings)
+
+          server.id.to_s
+        end
       end
 
       ##
