@@ -33,6 +33,7 @@ module Bosh::Cli
     end
 
     def prepare
+      define_commands
       parse_options!
       Config.output ||= STDOUT unless @options[:quiet]
       Config.interactive = !@options[:non_interactive]
@@ -40,11 +41,9 @@ module Bosh::Cli
       Config.cache = Bosh::Cli::Cache.new(@options[:cache_dir] ||
                                             Bosh::Cli::DEFAULT_CACHE_DIR)
 
-      define_commands
       define_plugin_commands
       build_parse_tree
       add_shortcuts
-
     end
 
     def run
@@ -145,7 +144,7 @@ module Bosh::Cli
 
     # for use with:
     # complete -C 'bosh complete' bosh
-    # @param [String] command line (minus "bosh")
+    # @param [String] line command line (minus "bosh")
     # @return [Array]
     def complete(line)
       words = line.split(/\s+/)
@@ -235,6 +234,12 @@ module Bosh::Cli
         route  :deployment, :perform
       end
 
+      command :edit_deployment do
+        usage  "edit deployment"
+        desc   "Edit current deployment manifest"
+        route  :deployment, :edit
+      end
+
       command :ssh do
         usage "ssh <job> [index] [<options>] [command]"
         desc  "Given a job, execute the given command or " +
@@ -257,18 +262,6 @@ module Bosh::Cli
           "/path/to/source /path/to/destination"
         desc  "upload/download the source file to the given job. " +
           "Note: for dowload /path/to/destination is a directory"
-        option "--public_key <file>"
-        option "--gateway_host <host>"
-        option "--gateway_user <user>"
-        route :ssh, :scp
-      end
-
-      command :scp do
-        usage "scp <job> <--upload | --download> [options] " +
-                  "/path/to/source /path/to/destination"
-        desc  "upload/download the source file to the given job. " +
-                  "Note: for download /path/to/destination is a directory"
-        option "--index <job_index>"
         option "--public_key <file>"
         option "--gateway_host <host>"
         option "--gateway_user <user>"
@@ -305,7 +298,6 @@ module Bosh::Cli
         usage  "create release"
         desc   "Create release (assumes current directory " +
                    "to be a release repository)"
-        route  :release, :create
         option "--force", "bypass git dirty state check"
         option "--final", "create production-ready release " +
             "(stores artefacts in blobstore, bumps final version)"
@@ -313,6 +305,7 @@ module Bosh::Cli
             "(by default only manifest is created)"
         option "--dry-run", "stop before writing release " +
             "manifest (for diagnostics)"
+        route  :release, :create
       end
 
       command :create_user do
@@ -330,35 +323,31 @@ module Bosh::Cli
       command :start_job do
         usage  "start <job> [<index>]"
         desc   "Start job/instance"
-        route  :job_management, :start_job
-
         power_option "--force"
+        route  :job_management, :start_job
       end
 
       command :stop_job do
         usage  "stop <job> [<index>]"
         desc   "Stop job/instance"
-        route  :job_management, :stop_job
         option "--soft", "stop process only"
         option "--hard", "power off VM"
-
         power_option "--force"
+        route  :job_management, :stop_job
       end
 
       command :restart_job do
         usage  "restart <job> [<index>]"
         desc   "Restart job/instance (soft stop + start)"
-        route  :job_management, :restart_job
-
         power_option "--force"
+        route  :job_management, :restart_job
       end
 
       command :recreate_job do
         usage "recreate <job> [<index>]"
         desc  "Recreate job/instance (hard stop + start)"
-        route :job_management, :recreate_job
-
         power_option "--force"
+        route :job_management, :recreate_job
       end
 
       command :rename_job do
@@ -366,18 +355,17 @@ module Bosh::Cli
         desc  "renames a job. NOTE, your deployment manifest must also be " +
               "updated to reflect the new job name."
         power_option "--force"
-
         route :job_rename, :rename
       end
 
       command :fetch_logs do
         usage  "logs <job> <index>"
         desc   "Fetch job (default) or agent (if option provided) logs"
-        route  :log_management, :fetch_logs
         option "--agent", "fetch agent logs"
         option "--only <filter1>[...]", "only fetch logs that satisfy " +
             "given filters (defined in job spec)"
         option "--all", "fetch all files in the job or agent log directory"
+        route  :log_management, :fetch_logs
       end
 
       command :set_property do
@@ -401,15 +389,15 @@ module Bosh::Cli
       command :list_properties do
         usage  "properties"
         desc   "List current deployment properties"
-        route  :property_management, :list
         option "--terse", "easy to parse output"
+        route  :property_management, :list
       end
 
       command :init_release do
         usage "init release [<path>]"
         desc  "Initialize release directory"
-        route :release, :init
         option "--git", "initialize git repository"
+        route :release, :init
       end
 
       command :generate_package do
@@ -452,9 +440,9 @@ module Bosh::Cli
       command :delete_deployment do
         usage "delete deployment <name>"
         desc  "Delete deployment"
-        route :deployment, :delete
         option "--force", "ignore all errors while deleting parts " +
             "of the deployment"
+        route :deployment, :delete
       end
 
       command :delete_stemcell do
@@ -466,8 +454,8 @@ module Bosh::Cli
       command :delete_release do
         usage  "delete release <name> [<version>]"
         desc   "Delete release (or a particular release version)"
-        route  :release, :delete
         option "--force", "ignore errors during deletion"
+        route  :release, :delete
       end
 
       command :reset_release do
@@ -486,10 +474,12 @@ module Bosh::Cli
       command :track_task do
         usage  "task [<task_id>|last]"
         desc   "Show task status and start tracking its output"
-        route  :task, :track
         option "--no-cache", "don't cache output locally"
         option "--event|--soap|--debug", "different log types to track"
         option "--raw", "don't beautify log"
+        option "--no-filter", "last task will include all types " +
+               "(ssh, logs, vms, etc)"
+        route  :task, :track
       end
 
       command :list_stemcells do
@@ -501,8 +491,8 @@ module Bosh::Cli
       command :list_public_stemcells do
         usage "public stemcells"
         desc  "Show the list of publicly available stemcells for download."
-        route :stemcell, :list_public
         option "--full", "show the full download url"
+        route :stemcell, :list_public
       end
 
       command :download_public_stemcell do
@@ -535,12 +525,14 @@ module Bosh::Cli
       command :list_running_tasks do
         usage "tasks"
         desc  "Show the list of running tasks"
+        option "--no-filter", "include all task types (ssh, logs, vms, etc)"
         route :task, :list_running
       end
 
       command :list_recent_tasks do
         usage "tasks recent [<number>]"
         desc  "Show <number> recent tasks"
+        option "--no-filter", "include all task types (ssh, logs, vms, etc)"
         route :task, :list_recent
       end
 

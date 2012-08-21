@@ -97,11 +97,12 @@ else
   puts "=> Performing test operations with cloudstack_cpi code"
 
   #cld.create_stemcell "image", {}
-  #disk_id = cld.create_disk(1500, 3976)
+  #disk_id = cld.create_disk(1500)
   #puts disk_id
   #cld.attach_disk(4000, 6959)
-  cld.attach_disk(3976, 6955)
+  #cld.attach_disk(3976, 6955)
   #cld.detach_disk(4000, 6905)
-  #cld.delete_disk(6958)
+  #cld.delete_disk(disk_id)
+  #cld.configure_networks(4000, {"network"=>{"type"=>"vip", "cloud_properties"=>{"public_ip"=>"178.159.244.152", "public_port"=>2223, "protocol"=>"tcp", "privateport"=>2223, "virtualmachineid"=>4000}}})
   puts "=> success"
 end

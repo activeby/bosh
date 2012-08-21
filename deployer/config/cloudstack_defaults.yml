@@ -7,12 +7,16 @@ logging:
 dir:
 
 network:
+  type: dynamic
   ip:
   netmask:
   gateway:
   dns: []
   cloud_properties:
     name:
+    public_ip:
+    public_port:
+
 
 env:
   bosh:
@@ -28,6 +32,8 @@ resources:
 cloud:
   plugin: cloudstack
   properties:
+    cloudstack:
+      default_security_groups: default
 
 
 apply_spec:

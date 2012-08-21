@@ -4,18 +4,36 @@ module Bosh::Cli::Command
   class JobManagement < Base
     include Bosh::Cli::DeploymentHelper
 
+    # usage  "start <job> [<index>]"
+    # desc   "Start job/instance"
+    # power_option "--force"
+    # route  :job_management, :start_job
     def start_job(*args)
       change_job_state(:start, *args)
     end
 
+    # usage  "stop <job> [<index>]"
+    # desc   "Stop job/instance"
+    # option "--soft", "stop process only"
+    # option "--hard", "power off VM"
+    # power_option "--force"
+    # route  :job_management, :stop_job
     def stop_job(*args)
       change_job_state(:stop, *args)
     end
 
+    # usage  "restart <job> [<index>]"
+    # desc   "Restart job/instance (soft stop + start)"
+    # power_option "--force"
+    # route  :job_management, :restart_job
     def restart_job(*args)
       change_job_state(:restart, *args)
     end
 
+    # usage "recreate <job> [<index>]"
+    # desc  "Recreate job/instance (hard stop + start)"
+    # power_option "--force"
+    # route :job_management, :recreate_job
     def recreate_job(*args)
       change_job_state(:recreate, *args)
     end

@@ -33,7 +33,7 @@ namespace :stemcell2 do
   def default_options(args)
     infrastructure = args[:infrastructure]
     unless infrastructure
-      STDERR.puts "Please specify target infrastructure (vsphere, aws, cloudstack)"
+      STDERR.puts "Please specify target infrastructure (vsphere, aws, openstack, cloudstack)"
       exit 1
     end
 
@@ -84,6 +84,8 @@ namespace :stemcell2 do
         hypervisor = "esxi"
       when "aws"
         hypervisor = "xen"
+      when "openstack"
+        hypervisor = "kvm"
       when "cloudstack"
         hypervisor = "kvm"
       else

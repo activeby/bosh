@@ -7,6 +7,10 @@ module Bosh::Cli::Command
     include Bosh::Cli::DependencyHelper
     include Bosh::Cli::VersionCalc
 
+    # usage "init release [<path>]"
+    # desc  "Initialize release directory"
+    # option "--git", "initialize git repository"
+    # route :release, :init
     def init(base=nil, *options)
       if base[0..0] == "-"
         # TODO: need to add some option parsing helpers to avoid that
@@ -64,6 +68,9 @@ module Bosh::Cli::Command
       say("Unable to run 'git init'".red)
     end
 
+    # usage "verify release <path>"
+    # desc  "Verify release"
+    # route :release, :verify
     def verify(tarball_path, *options)
       tarball = Bosh::Cli::ReleaseTarball.new(tarball_path)
 
@@ -81,6 +88,10 @@ module Bosh::Cli::Command
       end
     end
 
+    # usage "upload release [<path>]"
+    # desc  "Upload release (<path> can point to tarball or manifest, " +
+    #           "defaults to the most recently created release)"
+    # route :release, :upload
     def upload(release_file = nil)
       auth_required
 
@@ -111,6 +122,8 @@ module Bosh::Cli::Command
       manifest = load_yaml_file(manifest_path)
       remote_release = get_remote_release(manifest["name"]) rescue nil
       package_matches = match_remote_packages(File.read(manifest_path))
+
+      find_release_dir(manifest_path)
 
       blobstore = release.blobstore
       tmpdir = Dir.mktmpdir
@@ -175,6 +188,17 @@ module Bosh::Cli::Command
       task_report(status, "Release uploaded")
     end
 
+    # usage  "create release"
+    # desc   "Create release (assumes current directory " +
+    #            "to be a release repository)"
+    # option "--force", "bypass git dirty state check"
+    # option "--final", "create production-ready release " +
+    #     "(stores artefacts in blobstore, bumps final version)"
+    # option "--with-tarball", "create full release tarball" +
+    #     "(by default only manifest is created)"
+    # option "--dry-run", "stop before writing release " +
+    #     "manifest (for diagnostics)"
+    # route  :release, :create
     def create(*options)
       check_if_release_dir
       if options.size == 1 && File.file?(options[0])
@@ -357,6 +381,10 @@ module Bosh::Cli::Command
       builder.manifest_path
     end
 
+    # usage "reset release"
+    # desc  "Reset release development environment " +
+    #           "(deletes all dev artifacts)"
+    # route :release, :reset
     def reset
       check_if_release_dir
 
@@ -376,6 +404,9 @@ module Bosh::Cli::Command
       end
     end
 
+    # usage "releases"
+    # desc  "Show the list of available releases"
+    # route :release, :list
     def list
       auth_required
       releases = director.list_releases.sort do |r1, r2|
@@ -401,6 +432,10 @@ module Bosh::Cli::Command
       say("Releases total: %d" % releases.size)
     end
 
+    # usage  "delete release <name> [<version>]"
+    # desc   "Delete release (or a particular release version)"
+    # option "--force", "ignore errors during deletion"
+    # route  :release, :delete
     def delete(name, *options)
       auth_required
       force = options.include?("--force")
@@ -428,6 +463,19 @@ module Bosh::Cli::Command
     end
 
     private
+
+    # if we aren't already in a release directory, try going up two levels
+    # to see if that is a release directory, and then use that as the base
+    def find_release_dir(manifest_path)
+      unless in_release_dir?
+        dir = File.expand_path("../..", manifest_path)
+        Dir.chdir(dir)
+        if in_release_dir?
+          @release = Bosh::Cli::Release.new(dir)
+        end
+      end
+
+    end
 
     def show_summary(builder)
       packages_table = table do |t|

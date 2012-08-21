@@ -28,7 +28,6 @@ module Bosh::CloudStackCloud::NetworkOperations
                 else
                   @dynamic_network = DynamicNetwork.new(name, spec)
                   # only extract security groups for dynamic networks
-                  # DO WE NEED THIS ???????????????????????????????
                   extract_security_groups(spec)
                 end
               when "vip"
