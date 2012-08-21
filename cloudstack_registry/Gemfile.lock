@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    bosh_openstack_registry (0.0.2)
+    bosh_cloudstack_registry (0.0.1)
       fog (~> 1.5.0)
       sequel
       sinatra
@@ -97,7 +97,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  bosh_openstack_registry!
+  bosh_cloudstack_registry!
   ci_reporter
   pg
   rack-test
