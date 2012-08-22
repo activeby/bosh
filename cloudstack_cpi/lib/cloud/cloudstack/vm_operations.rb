@@ -57,6 +57,11 @@ module Bosh
             cloud_error("OpenStack CPI: flavor #{resource_pool["instance_type"]} not found")
           end
 
+          zone = @openstack.zone.find { |z| z.id == resource_pool["availability_zone"]}
+          if zone.nil?
+            cloud_error("CloudStack CPI: zone #{resource_pool["availability_zone"]} not found")
+          end
+
           # http://download.cloud.com/releases/2.2.0/api_2.2.8/user/deployVirtualMachine.html
           # CloudStack 2.2.8 User API Reference
           #
@@ -71,7 +76,8 @@ module Bosh
           server_params = {
             :flavor_id => flavor.id,
             :image_id => image.id,
-            # zone_id, account, diskofferingid
+            :zone_id => zone.id,
+            # account, diskofferingid
             :displayname => server_name, # an optional user generated name for the virtual machine
             # domainid, group, hostid, hypervisor, keypair
             :name => server_name, # host name for the virtual machine
@@ -79,8 +85,6 @@ module Bosh
             :securitygroupnames => "default"
             # size, userdata
           }
-
-          server_params[:zone_id] = 4 # zoneid - availability zone for the vm
 
           server = @cloudstack.servers.create(server_params)
           state = server.state
