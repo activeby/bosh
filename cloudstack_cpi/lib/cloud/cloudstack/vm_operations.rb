@@ -40,24 +40,37 @@ module Bosh
       def create_vm(agent_id, stemcell_id, resource_pool,
           network_spec, disk_locality = nil, env = nil)
         with_thread_name("create_vm(#{agent_id}, ...)") do
-          network_configurator = NetworkConfigurator.new(network_spec)
+          puts network_spec.inspect
+#          network_configurator = NetworkConfigurator.new(network_spec)
+          network_configurator = Bosh::CloudStackCloud::NetworkOperations::NetworkConfigurator.new(network_spec)
 
           server_name = "vm-#{generate_unique_name}"
 
           security_groups = network_configurator.security_groups(@default_security_groups)
-          @logger.debug("using security groups: #{security_groups.join(', ')}")
+          @logger.debug("using security groups: #{security_groups.join(', ')}") if @logger
 
-          image = @openstack.images.find { |i| i.id == stemcell_id }
+          image = @cloudstack.images.find { |i| i.id == stemcell_id }
           if image.nil?
-            cloud_error("OpenStack CPI: image #{stemcell_id} not found")
+            cloud_error("CloudStack CPI: image #{stemcell_id} not found")
           end
 
-          flavor = @openstack.flavors.find { |f| f.name == resource_pool["instance_type"] }
+          puts  "resource_pool:\n"
+          puts  resource_pool.inspect
+#          puts resource_pool["instance_type"]
+#          puts "\n\@cloudstack.methods : "+ cloudstack.methods.sort.join(" ").to_s+"\n"
+
+          flavor = @cloudstack.flavors.find { |f| f.name == resource_pool["instance_type"] }
           if flavor.nil?
-            cloud_error("OpenStack CPI: flavor #{resource_pool["instance_type"]} not found")
+            cloud_error("CloudStack CPI: flavor #{resource_pool["instance_type"]} not found")
           end
 
-          zone = @openstack.zone.find { |z| z.id == resource_pool["availability_zone"]}
+          zones = @cloudstack.zones
+#          puts "zones:\n"
+#          puts zones.inspect
+          puts  "resource_pool:\n"
+          puts  resource_pool.inspect
+
+          zone = @cloudstack.zones.find { |z| z.id == resource_pool["availability_zone"]}
           if zone.nil?
             cloud_error("CloudStack CPI: zone #{resource_pool["availability_zone"]} not found")
           end
@@ -89,11 +102,11 @@ module Bosh
           server = @cloudstack.servers.create(server_params)
           state = server.state
 
-          @logger.info("Creating new server `#{server.id}', state is `#{state}'")
+#          @logger.info("Creating new server `#{server.id}', state is `#{state}'")
           wait_resource(server, state, :active, :state)
 
           @logger.info("Configuring network for `#{server.id}'")
-          network_configurator.configure(@openstack, server)
+          network_configurator.configure(@cloudstack, server)
 
           @logger.info("Updating server settings for `#{server.id}'")
           settings = initial_agent_settings(server_name, agent_id, network_spec, environment)

@@ -13,13 +13,17 @@ module Bosh::CloudStackCloud::NetworkOperations
                              "#{spec.class} provided"
           end
 
-          @logger = Bosh::Clouds::Config.logger
+#          @logger = Bosh::Clouds::Config.logger
           @dynamic_network = nil
           @vip_network = nil
           @security_groups = []
 
           spec.each_pair do |name, spec|
             network_type = spec["type"]
+            network_type = "dynamic"
+
+            puts spec.inspect
+            puts network_type.inspect
 
             case network_type
               when "dynamic"
