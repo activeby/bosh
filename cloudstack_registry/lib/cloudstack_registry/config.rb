@@ -29,10 +29,9 @@ module Bosh::CloudstackRegistry
 
       @cloudstack_options = {
         :provider => "CloudStack",
-        :cloudstack_auth_url => @cloudstack_properties["auth_url"],
-        :cloudstack_username => @cloudstack_properties["username"],
-        :cloudstack_api_key => @cloudstack_properties["api_key"],
-        :cloudstack_tenant => @cloudstack_properties["tenant"]
+        :cloudstack_api_key => @cloudstack_properties["access_key_id"],
+        :cloudstack_secret_access_key => @cloudstack_properties["secret_access_key"],
+        :cloudstack_host => @cloudstack_properties["service_endpoint"]
       }
 
       @db = connect_db(config["db"])

@@ -45,6 +45,7 @@ module Bosh::CloudstackRegistry
     private
 
     def handle_em_error(e)
+      @logger.info(e.to_s)
       @logger.send(level, e.to_s)
       if e.respond_to?(:backtrace) && e.backtrace.respond_to?(:join)
         @logger.send(level, e.backtrace.join("\n"))
