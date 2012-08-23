@@ -58,17 +58,19 @@ module Bosh::CloudStackCloud::NetworkOperations
 
           if @vip_network
             @vip_network.configure(cloudstack, server)
-          else
+#          else
             # If there is no vip network we should disassociate any floating IP
             # currently held by server (as it might have had floating IP before)
-            addresses = cloudstack.addresses
-            addresses.each do |address|
-              if address.instance_id == server.id
-                @logger.info("Disassociating floating IP `#{address.ip}' " \
-                         "from server `#{server.id}'")
-                address.server = nil
-              end
-            end
+#            show_methods_for_object(cloudstack)
+#            addresses = cloudstack.addresses
+#            addresses = cloudstack.list_public_ip_addresses
+#            addresses.each do |address|
+#              if address.instance_id == server.id
+#                @logger.info("Disassociating floating IP `#{address.ip}' " \
+#                         "from server `#{server.id}'")
+#                address.server = nil
+#              end
+#            end
           end
         end
 

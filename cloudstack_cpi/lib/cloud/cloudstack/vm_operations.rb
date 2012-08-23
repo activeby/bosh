@@ -102,13 +102,15 @@ module Bosh
           server = @cloudstack.servers.create(server_params)
           state = server.state
 
-#          @logger.info("Creating new server `#{server.id}', state is `#{state}'")
-          wait_resource(server, state, :active, :state)
+          show_methods_for_object(server)
 
-          @logger.info("Configuring network for `#{server.id}'")
+#          @logger.info("Creating new server `#{server.id}', state is `#{state}'")
+          wait_resource(server, "Running")
+
+#          @logger.info("Configuring network for `#{server.id}'")
           network_configurator.configure(@cloudstack, server)
 
-          @logger.info("Updating server settings for `#{server.id}'")
+#          @logger.info("Updating server settings for `#{server.id}'")
           settings = initial_agent_settings(server_name, agent_id, network_spec, environment)
           @registry.update_settings(server.name, settings)
 

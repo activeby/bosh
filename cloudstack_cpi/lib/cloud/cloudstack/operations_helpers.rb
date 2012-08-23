@@ -40,6 +40,9 @@ module Bosh
 
           ensure_no_error_state!(desc, state, target_state)
 
+          # debug
+#          pp state.inspect
+
           @logger.debug("#{desc} has state #{state}.") if @logger
           break if state == target_state
 
@@ -51,6 +54,11 @@ module Bosh
           total = Time.now - started_at
           @logger.debug("#{desc} is now #{target_state}, took #{total}s")
         end
+      end
+
+      def show_methods_for_object(object)
+        name = object.class.name
+        puts "\n#{name} methods: "+ object.methods.sort.join(" ").to_s+"\n"
       end
 
       private
