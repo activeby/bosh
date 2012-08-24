@@ -40,9 +40,6 @@ module Bosh
 
           ensure_no_error_state!(desc, state, target_state)
 
-          # debug
-#          pp state.inspect
-
           @logger.debug("#{desc} has state #{state}.") if @logger
           break if state == target_state
 

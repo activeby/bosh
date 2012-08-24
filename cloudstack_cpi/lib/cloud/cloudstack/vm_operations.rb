@@ -38,10 +38,9 @@ module Bosh
       # @return [String] opaque id later used by {#configure_networks}, {#attach_disk},
       #                  {#detach_disk}, and {#delete_vm}
       def create_vm(agent_id, stemcell_id, resource_pool,
-          network_spec, disk_locality = nil, env = nil)
+          network_spec, disk_locality = nil, environment = nil)
         with_thread_name("create_vm(#{agent_id}, ...)") do
           puts network_spec.inspect
-#          network_configurator = NetworkConfigurator.new(network_spec)
           network_configurator = Bosh::CloudStackCloud::NetworkOperations::NetworkConfigurator.new(network_spec)
 
           server_name = "vm-#{generate_unique_name}"
@@ -82,7 +81,7 @@ module Bosh
           #
           # Creates and automatically starts a virtual machine
           # based on a service offering, disk offering, and template.
-          #
+          # required params
           #  :image_id=>1095,
           #  :flavor_id=>27,
           #  :zone_id=>4,
@@ -95,22 +94,20 @@ module Bosh
             # domainid, group, hostid, hypervisor, keypair
             :name => server_name, # host name for the virtual machine
             # networkids, securitygroupids
-            :securitygroupnames => "default"
+            # :securitygroupnames => "default"
             # size, userdata
           }
 
           server = @cloudstack.servers.create(server_params)
           state = server.state
 
-          show_methods_for_object(server)
-
-#          @logger.info("Creating new server `#{server.id}', state is `#{state}'")
+          @logger.info("Creating new server `#{server.id}', state is `#{state}'")
           wait_resource(server, "Running")
 
-#          @logger.info("Configuring network for `#{server.id}'")
+          @logger.info("Configuring network for `#{server.id}'")
           network_configurator.configure(@cloudstack, server)
 
-#          @logger.info("Updating server settings for `#{server.id}'")
+          @logger.info("Updating server settings for `#{server.id}'")
           settings = initial_agent_settings(server_name, agent_id, network_spec, environment)
           @registry.update_settings(server.name, settings)
 
@@ -136,6 +133,40 @@ module Bosh
       def reboot_vm(server_id)
         not_implemented(:reboot_vm)
       end
+
+      private
+
+      ##
+      # Generates initial agent settings. These settings will be read by agent
+      # from CloudStack registry (also a BOSH component) on a target server. Disk
+      # conventions for CloudStack are:
+      # system disk: /dev/vda
+      # CloudStack volumes can be configured to map to other device names later (vdc
+      # through vdz, also some kernels will remap vd* to xvd*).
+      #
+      # @param [String] agent_id Agent id (will be picked up by agent to
+      #   assume its identity
+      # @param [Hash] network_spec Agent network spec
+      # @param [Hash] environment
+      # @return [Hash]
+      def initial_agent_settings(server_name, agent_id, network_spec, environment)
+        settings = {
+          "vm" => {
+            "name" => server_name
+          },
+          "agent_id" => agent_id,
+          "networks" => network_spec,
+          "disks" => {
+            "system" => "/dev/vda",
+            "ephemeral" => "/dev/vdb",
+            "persistent" => {}
+          }
+        }
+
+        settings["env"] = environment if environment
+        settings.merge(@agent_properties)
+      end
+
     end
   end
 end
