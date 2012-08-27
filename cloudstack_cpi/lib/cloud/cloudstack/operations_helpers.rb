@@ -33,17 +33,21 @@ module Bosh
         @logger.debug("Waiting for #{desc} to be #{target_state}") if @logger
 
         started_at = Time.now
+        i = 0
         loop do
           error_if_timed_out!(started_at, timeout, desc, target_state)
 
           state = resource.send(state_method)
-
+          # debug
+          print " #{state} "
           ensure_no_error_state!(desc, state, target_state)
 
           @logger.debug("#{desc} has state #{state}.") if @logger
           break if state == target_state
 
           sleep(1)
+          print " #{i} #{resource} "
+          i = i + 1
           resource.reload
         end
 
@@ -53,6 +57,73 @@ module Bosh
         end
       end
 
+      def wait_deleted_server(resource, target_state, state_method = :state, timeout = DEFAULT_TIMEOUT)
+        show_methods_for_object(@cloudstack)
+        id = resource.id
+        m = @cloudstack.servers.find { |m| m.id == resource.id }
+        if m.nil?
+          pp "Not find: #{id}"
+        end
+
+#        ap "list: " + list("id"=>4730)["listtemplatesresponse"]["virtualmachine"]
+#        server = @cloudstack.list_virtual_machines(
+#          "id" => 5151
+#        )["listvirtualmachinesresponse"]["virtualmachine"]
+#        ap "server: #{server.inspect}"
+        return
+        begin
+          wait_resource(resource, target_state, state_method, timeout)
+        rescue
+          ap "\nRescue!\n"
+          pp resource
+          pp "resource.id: #{resource.id}"
+          server = @cloudstack.list_virtual_machines(
+            "id" => resource.id
+#          )["listvirtualmachinesresponse"]["virtualmachine"].first
+          )["listvirtualmachinesresponse"]["virtualmachine"]
+
+          ap "server: #{server.inspect}"
+          raise unless server != nil
+        end
+      end
+=begin
+      def wait_deleted_server(resource, target_state, state_method = :state, timeout = DEFAULT_TIMEOUT)
+        desc = resource.to_s
+        @logger.debug("Waiting for #{desc} to be #{target_state}") if @logger
+
+        started_at = Time.now
+        i = 0
+        loop do
+          error_if_timed_out!(started_at, timeout, desc, target_state)
+
+          state = resource.send(state_method)
+          # debug
+          print " #{state} "
+          ensure_no_error_state!(desc, state, target_state)
+
+          @logger.debug("#{desc} has state #{state}.") if @logger
+          break if state == target_state
+
+          sleep(1)
+          print " #{i} #{resource} "
+          i = i + 1
+          begin
+            resource.reload
+          rescue
+            pp "\nRescue!\n"
+            pp resource
+            server = @cloudstack.Servers.get(resource.id)
+            pp "server: #{server}"
+            raise unless server != nil
+          end
+        end
+
+        if @logger
+          total = Time.now - started_at
+          @logger.debug("#{desc} is now #{target_state}, took #{total}s")
+        end
+      end
+=end
       def show_methods_for_object(object)
         name = object.class.name
         puts "\n#{name} methods: "+ object.methods.sort.join(" ").to_s+"\n"

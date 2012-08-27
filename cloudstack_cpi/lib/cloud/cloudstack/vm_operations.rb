@@ -53,21 +53,12 @@ module Bosh
             cloud_error("CloudStack CPI: image #{stemcell_id} not found")
           end
 
-          puts  "resource_pool:\n"
-          puts  resource_pool.inspect
-#          puts resource_pool["instance_type"]
-#          puts "\n\@cloudstack.methods : "+ cloudstack.methods.sort.join(" ").to_s+"\n"
-
           flavor = @cloudstack.flavors.find { |f| f.name == resource_pool["instance_type"] }
           if flavor.nil?
             cloud_error("CloudStack CPI: flavor #{resource_pool["instance_type"]} not found")
           end
 
           zones = @cloudstack.zones
-#          puts "zones:\n"
-#          puts zones.inspect
-          puts  "resource_pool:\n"
-          puts  resource_pool.inspect
 
           zone = @cloudstack.zones.find { |z| z.id == resource_pool["availability_zone"]}
           if zone.nil?
@@ -101,15 +92,15 @@ module Bosh
           server = @cloudstack.servers.create(server_params)
           state = server.state
 
-          @logger.info("Creating new server `#{server.id}', state is `#{state}'")
+#          @logger.info("Creating new server `#{server.id}', state is `#{state}'")
           wait_resource(server, "Running")
 
-          @logger.info("Configuring network for `#{server.id}'")
+#          @logger.info("Configuring network for `#{server.id}'")
           network_configurator.configure(@cloudstack, server)
 
-          @logger.info("Updating server settings for `#{server.id}'")
-          settings = initial_agent_settings(server_name, agent_id, network_spec, environment)
-          @registry.update_settings(server.name, settings)
+#          @logger.info("Updating server settings for `#{server.id}'")
+#          settings = initial_agent_settings(server_name, agent_id, network_spec, environment)
+#          @registry.update_settings(server.name, settings)
 
           server.id.to_s
         end
@@ -121,7 +112,24 @@ module Bosh
       # @param [String] vm server_id that was once returned by {#create_vm}
       # @return nil
       def delete_vm(server_id)
-        not_implemented(:delete_vm)
+        with_thread_name("delete_vm(#{server_id})") do
+          server = @cloudstack.servers.find { |s| s.id == server_id }
+          if server.nil?
+#            @logger.info("Cant find server `#{server_id}'")
+            pp "Not find: #{server_id}"
+          else
+# TODO delete           server = @cloudstack.servers.get(server_id)
+#          @logger.info("Deleting server `#{server_id}'")
+            state = server.state
+
+#            @logger.info("Deleting server `#{server.id}', state is `#{state}'")
+            server.destroy
+            wait_deleted_server(server, :terminated)
+
+#            @logger.info("Deleting server settings for `#{server.id}'")
+#            @registry.delete_settings(server.name)
+          end
+        end
       end
 
       ##
@@ -131,7 +139,11 @@ module Bosh
       # @param [Optional, Hash] CPI specific options (e.g hard/soft reboot)
       # @return nil
       def reboot_vm(server_id)
-        not_implemented(:reboot_vm)
+        with_thread_name("reboot_vm(#{server_id})") do
+#          show_methods_for_object @cloudstack
+          server = @cloudstack.servers.get(server_id)
+          soft_reboot(server)
+        end
       end
 
       private
@@ -165,6 +177,16 @@ module Bosh
 
         settings["env"] = environment if environment
         settings.merge(@agent_properties)
+      end
+
+      ##
+      # Soft reboots an CloudStack server
+      # @param [Fog::Compute::CloudStack::Server] server CloudStack server
+      def soft_reboot(server)
+        state = server.state
+#        @logger.info("Soft rebooting server `#{server.id}', state is `#{state}'")
+        server.reboot
+        wait_resource(server, "Running")
       end
 
     end
