@@ -92,15 +92,15 @@ module Bosh
           server = @cloudstack.servers.create(server_params)
           state = server.state
 
-#          @logger.info("Creating new server `#{server.id}', state is `#{state}'")
+          @logger.info("Creating new server `#{server.id}', state is `#{state}'") if @logger
           wait_resource(server, "Running")
 
-#          @logger.info("Configuring network for `#{server.id}'")
+          @logger.info("Configuring network for `#{server.id}'") if @logger
           network_configurator.configure(@cloudstack, server)
 
-#          @logger.info("Updating server settings for `#{server.id}'")
-#          settings = initial_agent_settings(server_name, agent_id, network_spec, environment)
-#          @registry.update_settings(server.name, settings)
+          @logger.info("Updating server settings for `#{server.id}'") if @logger
+          settings = initial_agent_settings(server_name, agent_id, network_spec, environment)
+          @registry.update_settings(server.name, settings)
 
           server.id.to_s
         end
@@ -114,17 +114,17 @@ module Bosh
       def delete_vm(server_id)
         with_thread_name("delete_vm(#{server_id})") do
           server = @cloudstack.servers.find { |s| s.id == server_id.to_i }
-          @logger.info("Deleting server `#{server_id}'")
+          @logger.info("Deleting server `#{server_id}'") if @logger
           if server.nil?
-            @logger.info("Cant find server `#{server_id}'")
+            @logger.info("Cant find server `#{server_id}'") if @logger
           else
             state = server.state
 
-            @logger.info("Deleting server `#{server.id}', state is `#{state}'")
+            @logger.info("Deleting server `#{server.id}', state is `#{state}'") if @logger
             server.destroy
             wait_deleted_server(server, :terminated)
 
-            @logger.info("Deleting server settings for `#{server.id}'")
+            @logger.info("Deleting server settings for `#{server.id}'") if @logger
             @registry.delete_settings(server.name)
           end
         end
@@ -181,7 +181,7 @@ module Bosh
       # @param [Fog::Compute::CloudStack::Server] server CloudStack server
       def soft_reboot(server)
         state = server.state
-#        @logger.info("Soft rebooting server `#{server.id}', state is `#{state}'")
+        @logger.info("Soft rebooting server `#{server.id}', state is `#{state}'") if @logger
         server.reboot
         wait_resource(server, "Running")
       end

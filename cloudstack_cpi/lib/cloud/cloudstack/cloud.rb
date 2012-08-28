@@ -16,7 +16,7 @@ module Bosh
         @options = options.dup
         validate_options!
 
-#        @logger = Bosh::Clouds::Config.logger
+        @logger = Bosh::Clouds::Config.logger
 
         cloudstack_config = @options['cloudstack']
         compute_init_options = cloudstack_config.select { |key, _|
@@ -34,9 +34,6 @@ module Bosh
 #options[:cloudstack_port] = 443
 #options[:cloudstack_scheme] = 'https'
 #options[:cloudstack_persistent] = false
-
-        #vms = compute.list_virtual_machines
-        #p vms
 
 # create volume
 #        compute.volumes.create()
