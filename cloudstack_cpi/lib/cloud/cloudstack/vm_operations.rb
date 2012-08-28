@@ -113,21 +113,19 @@ module Bosh
       # @return nil
       def delete_vm(server_id)
         with_thread_name("delete_vm(#{server_id})") do
-          server = @cloudstack.servers.find { |s| s.id == server_id }
+          server = @cloudstack.servers.find { |s| s.id == server_id.to_i }
+          @logger.info("Deleting server `#{server_id}'")
           if server.nil?
-#            @logger.info("Cant find server `#{server_id}'")
-            pp "Not find: #{server_id}"
+            @logger.info("Cant find server `#{server_id}'")
           else
-# TODO delete           server = @cloudstack.servers.get(server_id)
-#          @logger.info("Deleting server `#{server_id}'")
             state = server.state
 
-#            @logger.info("Deleting server `#{server.id}', state is `#{state}'")
+            @logger.info("Deleting server `#{server.id}', state is `#{state}'")
             server.destroy
             wait_deleted_server(server, :terminated)
 
-#            @logger.info("Deleting server settings for `#{server.id}'")
-#            @registry.delete_settings(server.name)
+            @logger.info("Deleting server settings for `#{server.id}'")
+            @registry.delete_settings(server.name)
           end
         end
       end
@@ -140,7 +138,6 @@ module Bosh
       # @return nil
       def reboot_vm(server_id)
         with_thread_name("reboot_vm(#{server_id})") do
-#          show_methods_for_object @cloudstack
           server = @cloudstack.servers.get(server_id)
           soft_reboot(server)
         end
