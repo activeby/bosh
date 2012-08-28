@@ -40,7 +40,6 @@ module Bosh
       def create_vm(agent_id, stemcell_id, resource_pool,
           network_spec, disk_locality = nil, environment = nil)
         with_thread_name("create_vm(#{agent_id}, ...)") do
-          puts network_spec.inspect
           network_configurator = Bosh::CloudStackCloud::NetworkOperations::NetworkConfigurator.new(network_spec)
 
           server_name = "vm-#{generate_unique_name}"
