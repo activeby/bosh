@@ -1,4 +1,4 @@
-require 'fog'
+# Copyright (c) 2003-2012 Active Cloud, Inc.
 
 module Bosh
   module CloudStackCloud
@@ -18,37 +18,36 @@ module Bosh
 
         @logger = Bosh::Clouds::Config.logger
 
+        @agent_properties = @options["agent"] || {}
+        @registry_properties = @options["registry"]
+
+        registry_endpoint = @registry_properties["endpoint"]
+        registry_user = @registry_properties["user"]
+        registry_password = @registry_properties["password"]
+        @registry = RegistryClient.new(registry_endpoint,
+                                       registry_user,
+                                       registry_password)
+
         cloudstack_config = @options['cloudstack']
-        compute_init_options = cloudstack_config.select { |key, _|
-          %w(cloudstack_api_key cloudstack_secret_access_key cloudstack_host).include? key
+
+        compute_init_options = {
+                'cloudstack_api_key' => cloudstack_config["access_key_id"],
+                'cloudstack_secret_access_key' => cloudstack_config["secret_access_key"],
+                'cloudstack_host' => cloudstack_config["service_endpoint"]
         }
+
         compute_init_options[:provider] = "CloudStack"
 
         @cloudstack = Fog::Compute.new compute_init_options
 
         @disk_offerings_for_bosh = cloudstack_config['supported_disk_offerings']
         @default_availability_zone = cloudstack_config['default_availability_zone']
-#options[:cloudstack_session_id] = '?'
-#options[:cloudstack_session_key] = '?'
-#options[:cloudstack_path] = '/client/api'
-#options[:cloudstack_port] = 443
-#options[:cloudstack_scheme] = 'https'
-#options[:cloudstack_persistent] = false
 
-        #vms = compute.list_virtual_machines
-        #p vms
-
-# create volume
-#        compute.volumes.create()
-
-# copy image content to the volume
-#        ``
-
-# create template from the volume
-#        compute.images.create(template_create_params)
       end
 
       include OperationsHelpers
+
+      include RegistryOperations
 
       include StemcellOperations
 
@@ -62,6 +61,11 @@ module Bosh
 
       private
 
+      def not_implemented(method)
+        raise Bosh::Clouds::NotImplemented,
+              "Method `#{method}' is not implemented by #{self.class}"
+      end
+
       def validate_options!
         unless @options.has_key?('cloudstack') && has_cloudstack_authentication?(@options['cloudstack'])
           raise ArgumentError, "Invalid CloudStack configuration parameters"
@@ -70,19 +74,21 @@ module Bosh
 
       def has_cloudstack_authentication?(cloudstack_config)
         cloudstack_config.is_a?(Hash) &&
-        cloudstack_config['cloudstack_api_key'] &&
-        cloudstack_config['cloudstack_secret_access_key'] &&
-        cloudstack_config['cloudstack_host']
+        cloudstack_config['access_key_id'] &&
+        cloudstack_config['secret_access_key'] &&
+        cloudstack_config['service_endpoint']
       end
 
+      ##
+      # Raises CloudError exception
+      #
       def cloud_error(message)
         if @logger
           @logger.error(message)
         end
         raise Bosh::Clouds::CloudError, message
       end
+
     end
   end
 end
-
-# vim: autoindent tabstop=2 shiftwidth=2 expandtab softtabstop=2

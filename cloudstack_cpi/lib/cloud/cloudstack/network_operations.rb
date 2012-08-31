@@ -1,3 +1,5 @@
+# Copyright (c) 2003-2012 Active Cloud, Inc.
+
 module Bosh
   module CloudStackCloud
     module NetworkOperations
@@ -18,7 +20,11 @@ module Bosh
           network_configurator = NetworkConfigurator.new(network_spec)
           network_configurator.configure(@cloudstack, server)
 
-          update_agent_settings(server) do |settings|
+          @logger.info("Updating user-data for virtualmachine id=`#{server.id}'")
+          userdata = "{'vm' => {'name' => #{server.name}}}"
+          update_userdata(server.id, userdata)
+
+          update_registry_settings(server) do |settings|
             settings["networks"] = network_spec
           end
         end

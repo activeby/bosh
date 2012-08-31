@@ -1,3 +1,5 @@
+# Copyright (c) 2003-2012 Active Cloud, Inc.
+
 require 'spec_helper'
 
 describe Bosh::CloudStackCloud::StemcellOperations do

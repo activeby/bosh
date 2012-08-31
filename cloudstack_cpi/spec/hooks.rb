@@ -1,3 +1,5 @@
+# Copyright (c) 2003-2012 Active Cloud, Inc.
+
 RSpec.configure do |config|
   config.before(:each) do
     Fog.mock!

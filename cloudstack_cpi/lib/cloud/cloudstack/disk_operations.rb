@@ -1,3 +1,5 @@
+# Copyright (c) 2003-2012 Active Cloud, Inc.
+
 module Bosh
   module CloudStackCloud
     module DiskOperations
@@ -80,11 +82,13 @@ module Bosh
           volume.wait_for{volume.send(:server_id)}
           @logger.info("Volume is successfully attached.")
 
-          # uncomment and test when method ready
-          #update_agent_settings(server) do |settings|
-          #  settings["disks"] ||= {}
-          #  settings["disks"]["persistent"] ||= {}
-          #  settings["disks"]["persistent"][disk_id] = device_name
+          deviceid = get_disk_property(disk_id, "deviceid")
+          server = @cloudstack.servers.get(server_id)
+          update_registry_settings(server) do |settings|
+            settings["disks"] ||= {}
+            settings["disks"]["persistent"] ||= {}
+            settings["disks"]["persistent"][disk_id] = deviceid
+          end
         end
       end
 
@@ -101,12 +105,12 @@ module Bosh
           volume.wait_for{volume.send(:server_id) == nil}
           @logger.info("Volume is successfully detached.")
 
-          # uncomment and test when method ready
-          #update_agent_settings(server) do |settings|
-          #  settings["disks"] ||= {}
-          #  settings["disks"]["persistent"] ||= {}
-          #  settings["disks"]["persistent"].delete(disk_id)
-          #end
+          server = @cloudstack.servers.get(server_id)
+          update_registry_settings(server) do |settings|
+            settings["disks"] ||= {}
+            settings["disks"]["persistent"] ||= {}
+            settings["disks"]["persistent"].delete(disk_id)
+          end
         end
       end
 
@@ -146,19 +150,6 @@ module Bosh
         end
 
         cloud_error "Cannot find disk offering with size greater than #{size} Mb"
-      end
-
-      # TODO add initialize from openstack CPI to cloud.rb
-      def update_agent_settings(server)
-        unless block_given?
-          raise ArgumentError, "block is not provided"
-        end
-
-        # TODO uncomment to test registry
-        @logger.info("Updating server settings for `#{server.id}'")
-        settings = @registry.read_settings(server.name)
-        yield settings
-        @registry.update_settings(server.name, settings)
       end
 
       ## attaching volumes to mountpoint defined by deviceid doesn't work for cloudstack CPI 2.2.8

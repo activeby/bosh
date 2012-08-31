@@ -1,13 +1,17 @@
+# Copyright (c) 2003-2012 Active Cloud, Inc.
+
 module Bosh
   module CloudStackCloud; end
 end
 
-# require "httpclient"
+require 'fog'
+require "httpclient"
 require "pp"
 require "set"
 require "tmpdir"
 require "uuidtools"
-# require "yajl"
+require "yajl"
+require "base64"
 
 require "common/thread_pool"
 require "common/thread_formatter"
@@ -15,6 +19,8 @@ require "common/thread_formatter"
 
 require "cloud"
 require "cloud/cloudstack/operations_helpers"
+require "cloud/cloudstack/registry_operations"
+require "cloud/cloudstack/registry_client"
 require "cloud/cloudstack/stemcell_operations"
 require "cloud/cloudstack/disk_operations"
 require "cloud/cloudstack/vm_operations"

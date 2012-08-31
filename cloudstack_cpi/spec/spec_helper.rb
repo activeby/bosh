@@ -1,3 +1,5 @@
+# Copyright (c) 2003-2012 Active Cloud, Inc.
+
 ENV["BUNDLE_GEMFILE"] ||= File.expand_path("../../Gemfile", __FILE__)
 
 require "rubygems"

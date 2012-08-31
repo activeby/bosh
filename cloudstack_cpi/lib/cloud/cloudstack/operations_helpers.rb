@@ -1,7 +1,5 @@
-# Copyright (c) 2009-2012 VMware, Inc.
+# Copyright (c) 2003-2012 Active Cloud, Inc.
 
-#module Bosh::CloudStackCloud
-# see create_disk and update this module
 module Bosh
   module CloudStackCloud
     module OperationsHelpers
@@ -18,16 +16,23 @@ module Bosh
       end
 
       ##
-      # Raises CloudError exception
-      #
-      def cloud_error(message)
-        if @logger
-          @logger.error(message)
-        end
-        raise Bosh::Clouds::CloudError, message
+      # Encodes the data with base64 as it is required by CloudStack API
+      def base64encode_data(userdata)
+        Base64.urlsafe_encode64(userdata)
       end
 
-      # wait until the resource will be put into the target state
+      ##
+      # Writes user-data for VM into http://10.1.0.1/latest/user-data
+      def update_userdata(server_id, userdata)
+        registry_endpoint = @registry.endpoint
+        userdata_extended = "{#{userdata}, 'registry' => {'endpoint' => "#{registry_endpoint}"}}"
+        userdata_encoded = base64encode_data("#{userdata_extended}")
+        @cloudstack.update_virtual_machine({:id => "#{server_id}", :userdata => "#{userdata_encoded}"})
+        true
+      end
+
+      ##
+      # Wait until the resource will be put into the target state
       def wait_resource(resource, target_state, state_method = :state, timeout = DEFAULT_TIMEOUT)
         desc = resource.to_s
         @logger.debug("Waiting for #{desc} to be #{target_state}") if @logger
@@ -50,6 +55,18 @@ module Bosh
         if @logger
           total = Time.now - started_at
           @logger.debug("#{desc} is now #{target_state}, took #{total}s")
+        end
+      end
+
+      ##
+      # Wait until the server will be deleted
+      # we must catch exception when "Fog" can't find VM
+      def wait_deleted_server(resource, target_state, state_method = :state, timeout = DEFAULT_TIMEOUT)
+        begin
+          wait_resource(resource, target_state, state_method, timeout)
+        rescue
+          find_server = @cloudstack.servers.find { |s| s.id == resource.id }
+          raise if find_server != nil
         end
       end
 
