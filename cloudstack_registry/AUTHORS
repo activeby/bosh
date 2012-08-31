@@ -1,0 +1,8 @@
+# Authors
+# =========
+# The list is just ordered by first name here,
+# but the file is (and should be kept) YAML-formatted.
+#
+
+---
+- Serge A. Salamanka    { email: serge.salamanka@active.by, company: "Active Cloud" }

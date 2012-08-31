@@ -1,4 +1,4 @@
-# Copyright (c) 2009-2012 VMware, Inc.
+# Copyright (c) 2003-2012 Active Cloud, Inc.
 
 require File.dirname(__FILE__) + "/lib/cloudstack_registry/version"
 
@@ -8,8 +8,8 @@ Gem::Specification.new do |s|
   s.platform     = Gem::Platform::RUBY
   s.summary      = "BOSH CloudStack registry"
   s.description  = s.summary
-  s.author       = "ActiveCloud"
-  s.email        = "support@active.by"
+  s.author       = "Active Cloud"
+  s.email        = "dev@active.by"
   s.homepage     = "http://activecloud.com"
 
   s.files        = `git ls-files -- bin/* lib/*`.split("\n") + %w(README Rakefile)

@@ -1,4 +1,4 @@
-# Copyright (c) 2009-2012 VMware, Inc.
+# Copyright (c) 2003-2012 Active Cloud, Inc.
 
 module Bosh::CloudstackRegistry
   module YamlHelper
