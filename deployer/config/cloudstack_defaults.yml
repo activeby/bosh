@@ -22,18 +22,46 @@ env:
   bosh:
     password:
 
+# salsa: for cloud_properties usage see resource_pool in create_vm of BOSH CloudStack CPI
 resources:
   persistent_disk: 4096
   cloud_properties:
-    ram: 1024
-    disk: 4096
-    cpu: 1
+    instance_type: "1 CPU, 512 Mb RAM"
+    availability_zone: 2
+
 
 cloud:
   plugin: cloudstack
   properties:
     cloudstack:
       default_security_groups: default
+
+# salsa: these are full list of options from openstack
+cloud:
+  plugin: openstack
+  properties:
+    openstack:
+      auth_url:
+      username:
+      api_key:
+      tenant:
+      default_key_name:
+      default_security_groups: []
+      ssh_user: vcap
+    registry:
+      endpoint: http://admin:admin@localhost:25889
+      user: admin
+      password: admin
+    stemcell:
+      kernel_id:
+      disk: 4096
+    agent:
+      ntp: []
+      blobstore:
+        plugin: local
+        properties:
+          blobstore_path: /var/vcap/micro_bosh/data/cache
+      mbus:
 
 
 apply_spec:

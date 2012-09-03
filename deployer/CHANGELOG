@@ -5,3 +5,6 @@
 
 === 0.5.1 - 2012-08-13
 * include bosh cli as dependency
+
+=== 0.5.2 - 2012-09-03
+* added CloudStack support (TODO: build spec tests)
