@@ -35,19 +35,6 @@ cloud:
   properties:
     cloudstack:
       default_security_groups: default
-
-# salsa: these are full list of options from openstack
-cloud:
-  plugin: openstack
-  properties:
-    openstack:
-      auth_url:
-      username:
-      api_key:
-      tenant:
-      default_key_name:
-      default_security_groups: []
-      ssh_user: vcap
     registry:
       endpoint: http://admin:admin@localhost:25889
       user: admin
