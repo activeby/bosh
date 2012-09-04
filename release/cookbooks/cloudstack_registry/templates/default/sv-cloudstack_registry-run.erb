@@ -1,0 +1,6 @@
+#!/bin/bash
+
+PATH=<%= node[:ruby][:path] %>/bin:$PATH
+
+exec 2>&1
+exec chpst -u <%= node[:cloudstack_registry][:runner] %> env RACK_ENV=production TMPDIR=<%= node[:cloudstack_registry][:tmp] %> <%= node[:cloudstack_registry][:path] %>/current/cloudstack_registry/bin/cloudstack_registry -c <%= node[:cloudstack_registry][:path] %>/shared/config/cloudstack_registry.yml

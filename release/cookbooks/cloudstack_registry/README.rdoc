@@ -1,0 +1,4 @@
+= DESCRIPTION:
+
+Bosh CloudStack Registry configuration.
+

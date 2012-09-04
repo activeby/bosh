@@ -1,0 +1,18 @@
+---
+logfile: <%= node[:cloudstack_registry][:path] %>/shared/logs/cloudstack_registry.debug.log
+loglevel: debug
+
+http:
+  port: <%= node[:cloudstack_registry][:http][:port] %>
+  user: <%= node[:cloudstack_registry][:http][:user] %>
+  password: <%= node[:cloudstack_registry][:http][:password] %>
+
+db:
+  database: postgres://<%= node[:postgresql][:user] %>:<%= node[:postgresql][:password] %>@<%= node[:hosts][:postgresql] %>/<%= node[:cloudstack_registry][:database] %>
+  max_connections: 32
+  pool_timeout: 10
+
+cloudstack:
+  access_key_id: <%= node[:director][:cloudstack][:access_key_id] %>
+  secret_access_key: <%= node[:director][:cloudstack][:secret_access_key] %>
+  service_endpoint: <%= node[:director][:cloudstack][:service_endpoint] %>
