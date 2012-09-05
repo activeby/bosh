@@ -43,7 +43,7 @@ cookbook_file "/var/vcap/bosh/bin/stemcell-copy" do
   mode 0550
 end
 
-["postgresql-client-9.0", "libpq-dev"].each do |name|
+["postgresql-client-9.2", "libpq-dev"].each do |name|
   package name do
     options "--force-yes" # since it's not authenticated
   end

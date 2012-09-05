@@ -9,7 +9,7 @@ cookbook_file "/etc/apt/sources.list.d/01-postgres.list" do
   notifies :run, "execute[apt-get update]", :immediately
 end
 
-package "postgresql-9.0" do
+package "postgresql-9.2" do
   options "--force-yes" # since it's not authenticated
 end
 
@@ -30,12 +30,12 @@ directory node[:postgresql][:data_directory] do
 end
 
 bash "init data directory" do
-  code "sudo -u postgres /usr/lib/postgresql/9.0/bin/initdb -D #{node[:postgresql][:data_directory]}"
+  code "sudo -u postgres /usr/lib/postgresql/9.2/bin/initdb -D #{node[:postgresql][:data_directory]}"
   timeout 5
   not_if { ::File.exists?("#{node[:postgresql][:data_directory]}/PG_VERSION") }
 end
 
-template "/etc/postgresql/9.0/main/pg_hba.conf" do
+template "/etc/postgresql/9.2/main/pg_hba.conf" do
   source "pg_hba.conf.erb"
   owner "postgres"
   group "postgres"
@@ -43,7 +43,7 @@ template "/etc/postgresql/9.0/main/pg_hba.conf" do
   notifies :reload, "service[postgresql]"
 end
 
-template "/etc/postgresql/9.0/main/postgresql.conf" do
+template "/etc/postgresql/9.2/main/postgresql.conf" do
   source "postgresql.conf.erb"
   owner "postgres"
   group "postgres"
