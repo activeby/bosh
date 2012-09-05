@@ -6,7 +6,7 @@ module Bosh::Agent
 
       API_TIMEOUT           = 86400 * 3
       CONNECT_TIMEOUT       = 30
-      SERVER_DATA_URI = "http://169.254.169.254/1.0"
+      SERVER_DATA_URI = "http://10.1.0.1/latest"
 
       def get_uri(uri)
         client = HTTPClient.new
@@ -27,21 +27,24 @@ module Bosh::Agent
         raise("Timed out reading uri #{uri}, " \
                     "please make sure agent is running on CloudStack server")
       rescue URI::Error, SocketError, Errno::ECONNREFUSED, SystemCallError => e
-        raise("Error requesting current server id from #{uri} #{e.inspect}")
+        raise("Error requesting current server name from #{uri} #{e.inspect}")
       end
 
       ##
       # Reads current server name from CloudStack user-data. We are assuming
       # server name cannot change while current process is running
       # and thus memoizing it.
-      def current_server_id
-        return @current_server_id if @current_server_id
-        user_data = get_json_from_url(SERVER_DATA_URI + "/user-data")
-        unless user_data.has_key?("server") &&
-               user_data["server"].has_key?("name")
-          raise("Cannot parse user data for endpoint #{user_data.inspect}")
-        end
-        @current_server_id = user_data["server"]["name"]
+      def current_server_name
+        return @current_server_name if @current_server_name
+        # we can use meta-data:
+        @current_server_name = get_uri("/meta-data/instance-id")
+        # we also can use user-data:
+        #user_data = get_json_from_url(SERVER_DATA_URI + "/user-data")
+        #unless user_data.has_key?("server") &&
+        #       user_data["server"].has_key?("name")
+        #  raise("Cannot parse user data for endpoint #{user_data.inspect}")
+        #end
+        #@current_server_name = user_data["server"]["name"]
       end
 
       def get_json_from_url(url)
@@ -86,13 +89,14 @@ module Bosh::Agent
         user_data["registry"]["endpoint"]
       end
 
+      # !!!! no such uri in CloudStack
       def get_openssh_key
         get_uri("/meta-data/public-keys/0/openssh-key")
       end
 
       def get_settings
         @registry_endpoint ||= get_registry_endpoint
-        url = "#{@registry_endpoint}/servers/#{current_server_id}/settings"
+        url = "#{@registry_endpoint}/servers/#{current_server_name}/settings"
         body = get_json_from_url(url)
 
         settings = Yajl::Parser.parse(body["settings"])
