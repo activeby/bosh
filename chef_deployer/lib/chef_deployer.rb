@@ -97,7 +97,7 @@ module ChefDeployer
                channel = ssh.open_channel do |ch|
                  ch.request_pty do |_, success|
                    raise "could not allocate pty" unless success
-                   ch.exec("sudo -p :::deploy_sudo_passwd::: /var/vcap/bosh/bin/chef-solo -c #{@remote_chef_path}/chef.rb -j #{@remote_chef_path}/chef.json") do |_, success|
+                   ch.exec("sudo -p :::deploy_sudo_passwd::: /var/vcap/bosh/bin/ruby /var/vcap/bosh/bin/chef-solo -c #{@remote_chef_path}/chef.rb -j #{@remote_chef_path}/chef.json") do |_, success|
                      raise "could not execute command" unless success
 
                      ch.on_data do |_, data|
