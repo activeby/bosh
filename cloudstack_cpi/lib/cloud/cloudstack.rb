@@ -32,5 +32,6 @@ require "cloud/cloudstack/cloud"
 module Bosh
   module Clouds
     CloudStack = Bosh::CloudStackCloud::Cloud
+    Cloudstack = CloudStack # Alias needed for Bosh::Clouds::Provider.create method
   end
 end
