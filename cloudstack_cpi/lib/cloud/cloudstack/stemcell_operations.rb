@@ -116,13 +116,13 @@ module Bosh
 
         template_params = {
             :command => "registerTemplate",
-            :displaytext => "BOSH-" + cloud_properties["unique_name"],
+            :displaytext => cloud_properties["displaytext"],
             :format => cloud_properties["template_format"],
             :hypervisor => cloud_properties["hypervisor"],
-            :name => "BOSH",  # TODO: should we call this somehow?
-            :ostypeid => 126, # TODO: hardcoded - bad # "ostypename"=>"Ubuntu 10.04 (64-bit)"
+            :name => cloud_properties["name"],
+            :ostypeid => cloud_properties["ostypeid"],
             :url => image_url,
-            :zoneid => 2, # TODO: hardcoded - bad # BY
+            :zoneid => cloud_properties["zoneid"],
         }
 
         template = @cloudstack.request(template_params)
