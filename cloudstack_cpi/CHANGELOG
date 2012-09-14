@@ -1,3 +1,6 @@
+=== 0.0.3 - 2012-09-13
+* fix for stemcell_operations
+
 === 0.0.2 - 2012-09-12
 * fix for Bosh::Clouds::Provider.create method
 

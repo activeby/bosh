@@ -16,13 +16,13 @@ module Bosh
             image_path = extract_image(image_path, tmp_dir)
 
             unique_name = generate_unique_name
-            cloud_properties[:unique_name] = unique_name
+            cloud_properties["unique_name"] = unique_name
             symlink_name = unique_name + ".qcow2"
 
-            link = cloud_properties[:web_root] + "/#{symlink_name}"
+            link = cloud_properties["web_root"] + "/#{symlink_name}"
             File.symlink(image_path, link)
 
-            image_url = "http://" + cloud_properties[:public_dns_name] + "/#{symlink_name}"
+            image_url = "http://" + cloud_properties["public_dns_name"] + "/#{symlink_name}"
             template_id = create_cloudstack_template image_url, cloud_properties
             File.delete(link)
             return template_id.to_s
@@ -116,13 +116,13 @@ module Bosh
 
         template_params = {
             :command => "registerTemplate",
-            :displaytext => "BOSH-" + cloud_properties[:unique_name],
-            :format => cloud_properties[:template_format],
-            :hypervisor => cloud_properties[:hypervisor],
-            :name => "BOSH",
-            :ostypeid => 1, # TODO: hardcoded - bad
+            :displaytext => "BOSH-" + cloud_properties["unique_name"],
+            :format => cloud_properties["template_format"],
+            :hypervisor => cloud_properties["hypervisor"],
+            :name => "BOSH",  # TODO: should we call this somehow?
+            :ostypeid => 126, # TODO: hardcoded - bad # "ostypename"=>"Ubuntu 10.04 (64-bit)"
             :url => image_url,
-            :zoneid => 4, # TODO: hardcoded - bad
+            :zoneid => 2, # TODO: hardcoded - bad # BY
         }
 
         template = @cloudstack.request(template_params)
