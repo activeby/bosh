@@ -63,6 +63,11 @@ module Bosh::Director
         stemcell.name = @name
         stemcell.version = @version
 
+        track_and_log("Verifying cloud_properties: #{@cloud_properties.inspect}") do
+          # make verification of the parameters here
+          logger.info("Verifying cloud_properties: #{@cloud_properties.inspect}")
+        end
+
         track_and_log("Uploading stemcell #{@name}/#{@version} to the cloud") do
           stemcell.cid =
             @cloud.create_stemcell(@stemcell_image, @cloud_properties)
