@@ -12,12 +12,13 @@ module Bosh
       # @return [String] opaque id later used by {#create_vm} and {#delete_stemcell}
       def create_stemcell(image_path, cloud_properties)
         with_thread_name("create_stemcell(#{image_path}...)") do
-          Dir.mktmpdir do |tmp_dir|
-            image_path = extract_image(image_path, tmp_dir)
-
             unique_name = generate_unique_name
-            cloud_properties["unique_name"] = unique_name
-            symlink_name = unique_name + ".qcow2"
+            template_unique_name = cloud_properties["name"] + "-" + "#{unique_name}"
+            cloud_properties["template_unique_name"] = template_unique_name
+            symlink_name = template_unique_name + ".qcow2"
+            tmp_dir = Dir.mkdir(template_unique_name, 0755)
+
+            image_path = extract_image(image_path, tmp_dir)
 
             link = cloud_properties["web_root"] + "/#{symlink_name}"
             File.symlink(image_path, link)
@@ -26,7 +27,6 @@ module Bosh
             template_id = create_cloudstack_template image_url, cloud_properties
             File.delete(link)
             return template_id.to_s
-          end
         end
       end
 
@@ -119,7 +119,7 @@ module Bosh
             :displaytext => cloud_properties["displaytext"],
             :format => cloud_properties["template_format"],
             :hypervisor => cloud_properties["hypervisor"],
-            :name => cloud_properties["name"],
+            :name => cloud_properties["template_unique_name"],
             :ostypeid => cloud_properties["ostypeid"],
             :url => image_url,
             :zoneid => cloud_properties["zoneid"],
