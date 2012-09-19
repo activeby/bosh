@@ -1,5 +1,5 @@
 === 0.0.4 - 2012-09-18
-* rewrite for stemcell_operations due to wrong tmpdir permissions for nginx
+* set permissions for tmpdir in stemcell_operations due to wrong permissions for nginx
 
 === 0.0.3 - 2012-09-13
 * fix for stemcell_operations
