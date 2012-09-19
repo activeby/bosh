@@ -13,8 +13,9 @@ module Bosh
       def create_stemcell(image_path, cloud_properties)
         with_thread_name("create_stemcell(#{image_path}...)") do
           Dir.mktmpdir do |tmp_dir|
-            File.chmod(0755, tmp_dir)
             image_path = extract_image(image_path, tmp_dir)
+            File.chmod(0755, tmp_dir)
+            File.chmod(0755, image_path)
 
             unique_name = generate_unique_name
             template_unique_name = cloud_properties["name"] + "-" + "#{unique_name}"
