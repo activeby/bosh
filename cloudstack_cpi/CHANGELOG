@@ -1,3 +1,6 @@
+=== 0.0.7 - 2012-09-20
+* change status check for create method in stemcell_operations
+
 === 0.0.6 - 2012-09-20
 * change status check for create method in stemcell_operations
 

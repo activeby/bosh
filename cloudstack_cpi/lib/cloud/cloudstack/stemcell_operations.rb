@@ -130,7 +130,7 @@ module Bosh
         template = @cloudstack.request(template_params)
         id = template["registertemplateresponse"]["template"][0]["id"]
         image = get_stemcell(id)
-        wait_resource(image, "Ready", :status)
+        wait_resource(image, "Download Complete", :status)
         @logger.info("Creating new image...") if @logger
         return image.id
       end
