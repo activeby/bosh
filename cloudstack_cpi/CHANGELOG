@@ -1,3 +1,6 @@
+=== 0.0.8 - 2012-09-21
+* using fog-1.6.0. change in stemcell_operations
+
 === 0.0.7 - 2012-09-20
 * change status check for create method in stemcell_operations
 

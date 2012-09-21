@@ -48,10 +48,7 @@ module Bosh
       private
 
       def get_stemcell stemcell_id
-        #TODO: replace with @cloudstack.images.get(stemcell_id) when fix for this method will be released in fog 1.5+
-        options = {'templatefilter' => 'self', 'id' => stemcell_id}
-        template = @cloudstack.list_templates(options)["listtemplatesresponse"]["template"].first
-        @cloudstack.images.new(template)
+        @cloudstack.images.get(stemcell_id)
       end
 
       def extract_image(from_tarball, to_tmp_dir)
