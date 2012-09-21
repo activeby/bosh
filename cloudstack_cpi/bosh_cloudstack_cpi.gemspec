@@ -18,4 +18,5 @@ Gem::Specification.new do |s|
   s.add_dependency "httpclient"
   s.add_dependency "uuidtools"
   s.add_dependency "yajl-ruby"
+  s.add_dependency "fog", "~>1.6.0"
 end
